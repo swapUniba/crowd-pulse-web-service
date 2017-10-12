@@ -26,6 +26,8 @@ var DataLayer = function() {
       self.User = require('./model/user')(self.connection);
       self.Message = require('./model/message')(self.connection);
       self.Profile = require('./model/profile')(self.connection);
+      self.PersonalData = require('./model/personalData')(self.connection);
+      self.Connection = require('./model/connection')(self.connection);
       self.ObjectId = mongoose.Types.ObjectId;
 
       // return the whole object

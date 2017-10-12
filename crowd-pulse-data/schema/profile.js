@@ -9,6 +9,9 @@ var schemas = require('./schemaName');
 var ProfileSchema = builder(schemas.profile, {
   id: mongoose.Schema.ObjectId,
   source: String,
+  email: { type: String, lowercase: true },
+  displayName: String,
+  password: String,
   username: String,
   customTags: [String],
   activationDate: Date,
@@ -18,7 +21,38 @@ var ProfileSchema = builder(schemas.profile, {
   location: String,
   latitude: Number,
   longitude: Number,
-  connections: [String]
+  connections: [String],
+  devices: [
+      {
+        deviceId: String,
+        brand: String,
+        model: String,
+        sdk: Number,
+        phoneNumbers: [String]
+      }
+  ],
+  accounts: [
+      {
+        userAccountName: String,
+        packageName: String
+      }
+  ],
+  deviceConfigs: [
+      {
+        deviceId: String,
+        readGPS: Number,
+        readContact: Number,
+        readAccounts: Number,
+        readAppInfo: Number,
+        readNetStats: Number,
+        readDisplay: Number,
+        timeReadGPS: Number,
+        timeReadContact: Number,
+        timeReadAccounts: Number,
+        timeReadAppInfo: Number,
+        timeReadNetStats: Number
+      }
+  ]
 });
 
 ProfileSchema.statics.listGraphNodes = function(users) {

@@ -11,5 +11,7 @@ module.exports = {
   refreshToken: 'OAuthRefreshTokenSchema',
   tag: 'Tag',
   token: 'Token',
-  user: 'User'
+  user: 'User',
+  personalData: 'PersonalData',
+  connection: 'Connection'
 };
