@@ -12,7 +12,7 @@ var ConnectionSchema = builder(schemas.connection, {
     phoneNumber: String,
     contactId: String,
     contactName: String,
-    contactPhoneNumber: String,
+    contactPhoneNumbers: [String],
     starred: Number,
     contactedTimes: Number
 });

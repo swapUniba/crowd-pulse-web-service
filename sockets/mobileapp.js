@@ -2,38 +2,43 @@
 
 var bcrypt = require('bcrypt');
 var config = require('./../lib/config');
+var CrowdPulse = require('./../crowd-pulse-data');
 
-var RESPONSE = {
+const FAIL = 0;         //code for any failure
+const SUCCESS = 1;      //code for any success
+const RECEIVING = 2;    //if mobile app is receiving data (eg. configuration from web app)
+
+const RESPONSE = {
     "user_not_found": {
-        "code": 1,
+        "code": FAIL,
         "description": "User not found"
     },
     "wrong_password": {
-        "code": 2,
+        "code": FAIL,
         "description": "Wrong password"
     },
     "login_success": {
-        "code": 3,
+        "code": SUCCESS,
         "description": "Login Ok"
     },
     "not_authorized": {
-        "code": 4,
+        "code": FAIL,
         "description": "User not authorized. Login required."
     },
     "config_acquired": {
-        "code": 5,
+        "code": SUCCESS,
         "description": "Configuration correctly saved."
     },
     "device_not_found": {
-        "code": 6,
+        "code": FAIL,
         "description": "The deviceID doesn't match any deviceID stored."
     },
     "data_acquired": {
-        "code": 7,
+        "code": SUCCESS,
         "description": "Data correctly saved."
     },
     "data_format_error": {
-        "code": 8,
+        "code": FAIL,
         "description": "Data format not valid."
     }
 };
@@ -92,11 +97,14 @@ module.exports = function (io, crowdPulse) {
                                     user.save();
                                     deviceId = data.deviceId;
                                     socket.join(deviceId);
+                                    RESPONSE["login_success"].displayName = displayName;
                                     io.in(deviceId).emit("login", RESPONSE["login_success"]);
                                 }
                             });
                         }
                     });
+                }).finally(function () {
+                    crowdPulse.disconnect();
                 });
             } else {
                 console.log('DeviceID not found');
@@ -107,11 +115,13 @@ module.exports = function (io, crowdPulse) {
 
         socket.on('config', function (data) {
             if (deviceId) {
-                crowdPulse.connect(config.database.url, "profiles").then(function(conn) {
+                var dbConnection = new CrowdPulse();
+                dbConnection.connect(config.database.url, "profiles").then(function(conn) {
                     conn.Profile.findOne({devices: {$elemMatch: { deviceId: deviceId}}}, function (err, user) {
                         if (!user) {
                             socket.emit("config", RESPONSE["device_not_found"]);
                         } else {
+                            console.log("Configuration updated");
                             if (user.deviceConfigs) {
                                 var found = false;
                                 for (var i = 0; i < user.deviceConfigs.length && !found; i++) {
@@ -130,6 +140,8 @@ module.exports = function (io, crowdPulse) {
                             io.in(deviceId).emit("config", RESPONSE["config_acquired"]);
                         }
                     });
+                }).finally(function () {
+                    dbConnection.disconnect();
                 });
             } else {
                 console.log('User not authorized');
@@ -138,46 +150,82 @@ module.exports = function (io, crowdPulse) {
         });
 
         socket.on('send_data', function (data) {
-            if (deviceId) {
-                console.log("Send data started from " + deviceId);
+            if ((deviceId && displayName) || (data.deviceId && data.displayName)) {
+                socket.join(data.deviceId);
+                console.log("Send data started from " + data.deviceId);
                 if (data.data) {
                     data.data.forEach(function (element, i) {
-                        element.displayName = displayName;
-                        element.deviceId = deviceId;
+                        element.displayName = data.displayName;
+                        element.deviceId = data.deviceId;
 
+                        var dbConnection;
                         if (element.source === "contact") {
-                            crowdPulse.Connection.newFromObject(element).save();
+                            dbConnection = new CrowdPulse();
+                            dbConnection.connect(config.database.url, data.displayName).then(function (conn) {
+                                conn.Connection.newFromObject(element).save();
+                                return dbConnection.connect(config.database.url, "connections");
+
+                            }).then(function (conn) {
+                                conn.Connection.newFromObject(element).save();
+
+                            }).finally(function () {
+                                console.log("Contact for " + data.deviceId + " saved");
+                                //dbConnection.disconnect();
+                            });
+
                         } else if (element.source === "accounts") {
-                            crowdPulse.connect(config.database.url, "profiles").then(function (conn) {
-                                conn.Profile.findOne({devices: {$elemMatch: {deviceId: deviceId}}}, function (err, user) {
+                            dbConnection = new CrowdPulse();
+                            dbConnection.connect(config.database.url, "profiles").then(function (conn) {
+                                conn.Profile.findOne({devices: {$elemMatch: {deviceId: data.deviceId}}}, function (err, user) {
                                     if (!user) {
-                                        io.in(deviceId).emit("send_data", RESPONSE["device_not_found"]);
+                                        io.in(data.deviceId).emit("send_data", RESPONSE["device_not_found"]);
                                     } else {
                                         var accountData = {
                                             userAccountName: element.userAccountName,
                                             packageName: element.packageName
                                         };
-                                        if (user.accounts) {
-                                            user.accounts.push(accountData);
 
-                                        } else {
-                                            user.accounts = [accountData];
+                                        var found = false;
+                                        for (var i = 0; i < user.accounts.length && !found; i++) {
+
+                                            //accounts already stored do not be saved!
+                                            if (accountData.packageName  === user.accounts[i].packageName
+                                                && accountData.userAccountName === user.accounts[i].userAccountName) {
+                                                found = true;
+                                            }
+                                        }
+                                        if (!found) {
+                                            user.accounts.push(accountData);
                                         }
                                         user.save();
+                                        console.log("Account for " + data.deviceId + " saved or updated");
                                     }
                                 });
                             });
                         } else {
-                            //TODO connect to specifi crowdpulse database (NOT PROFILES)
-                            crowdPulse.PersonalData.newFromObject(element).save();
+                            dbConnection = new CrowdPulse();
+                            dbConnection.connect(config.database.url, data.displayName).then(function (conn) {
+                                conn.PersonalData.newFromObject(element).save();
+                                return dbConnection.connect(config.database.url, "personal_data");
+
+                            }).then(function (conn) {
+                                conn.PersonalData.newFromObject(element).save();
+
+                            }).finally(function () {
+                                console.log("Data of type " + element.source + " for " + data.deviceId + " saved");
+                                //dbConnection.disconnect();
+                            });
+
                         }
 
                     });
 
-                    io.in(deviceId).emit("send_data", RESPONSE["data_acquired"]);
+                    RESPONSE["data_acquired"].dataIdentifier = data.dataIdentifier;
+                    io.in(data.deviceId).emit("send_data", RESPONSE["data_acquired"]);
+                    crowdPulse.disconnect();
                 } else {
                     console.log('Data not recognized');
-                    io.in(deviceId).emit("send_data", RESPONSE["data_format_error"]);
+                    io.in(data.deviceId).emit("send_data", RESPONSE["data_format_error"]);
                 }
             } else {
                 console.log('User not authorized');
