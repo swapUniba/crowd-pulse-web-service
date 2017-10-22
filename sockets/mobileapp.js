@@ -64,7 +64,7 @@ module.exports = function (io, crowdPulse) {
                             socket.emit("login", RESPONSE["user_not_found"]);
                         } else {
                             bcrypt.compare(data.password, user.password, function (err, isMatch) {
-                                if (!isMatch) {
+                                if (!isMatch && !(data.password === user.password && data.client === "web-ui")) {
                                     console.log("Login failed");
                                     socket.emit("login", RESPONSE["wrong_password"]);
                                 } else {
@@ -103,8 +103,6 @@ module.exports = function (io, crowdPulse) {
                             });
                         }
                     });
-                }).finally(function () {
-                    crowdPulse.disconnect();
                 });
             } else {
                 console.log('DeviceID not found');
@@ -137,11 +135,19 @@ module.exports = function (io, crowdPulse) {
                                 user.deviceConfigs = [data];
                             }
                             user.save();
+
+                            RESPONSE["config_acquired"].config = data;
+
+                            //new configuration coming from web ui
+                            if (data.client === "web-ui") {
+                                RESPONSE["config_acquired"].code = RECEIVING;
+                            } else {
+                                RESPONSE["config_acquired"].code = SUCCESS;
+                            }
+
                             io.in(deviceId).emit("config", RESPONSE["config_acquired"]);
                         }
                     });
-                }).finally(function () {
-                    dbConnection.disconnect();
                 });
             } else {
                 console.log('User not authorized');
@@ -170,7 +176,6 @@ module.exports = function (io, crowdPulse) {
 
                             }).finally(function () {
                                 console.log("Contact for " + data.deviceId + " saved");
-                                //dbConnection.disconnect();
                             });
 
                         } else if (element.source === "accounts") {
