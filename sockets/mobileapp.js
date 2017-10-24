@@ -40,6 +40,10 @@ const RESPONSE = {
     "data_format_error": {
         "code": FAIL,
         "description": "Data format not valid."
+    },
+    "data_request_sent": {
+        "code": RECEIVING,
+        "description": "Your request has been sent to the device."
     }
 };
 
@@ -158,8 +162,11 @@ module.exports = function (io, crowdPulse) {
         socket.on('send_data', function (data) {
             if ((deviceId && displayName) || (data.deviceId && data.displayName)) {
                 socket.join(data.deviceId);
-                console.log("Send data started from " + data.deviceId);
-                if (data.data) {
+                if (data.client === "web-ui") {
+                    console.log("Send data requested for " + data.deviceId + " by web UI");
+                    io.in(data.deviceId).emit("send_data", RESPONSE["data_request_sent"]);
+                } else if (data.data) {
+                    console.log("Send data started from " + data.deviceId);
                     data.data.forEach(function (element, i) {
                         element.displayName = data.displayName;
                         element.deviceId = data.deviceId;
@@ -218,16 +225,12 @@ module.exports = function (io, crowdPulse) {
 
                             }).finally(function () {
                                 console.log("Data of type " + element.source + " for " + data.deviceId + " saved");
-                                //dbConnection.disconnect();
                             });
-
                         }
-
                     });
 
                     RESPONSE["data_acquired"].dataIdentifier = data.dataIdentifier;
                     io.in(data.deviceId).emit("send_data", RESPONSE["data_acquired"]);
-                    crowdPulse.disconnect();
                 } else {
                     console.log('Data not recognized');
                     io.in(data.deviceId).emit("send_data", RESPONSE["data_format_error"]);
@@ -237,7 +240,6 @@ module.exports = function (io, crowdPulse) {
                 socket.emit("send_data", RESPONSE["not_authorized"]);
             }
         });
-
     });
 
 };
