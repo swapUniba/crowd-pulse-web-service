@@ -40,17 +40,23 @@ var ProfileSchema = builder(schemas.profile, {
   deviceConfigs: [
       {
         deviceId: String,
-        readGPS: Number,
-        readContact: Number,
-        readAccounts: Number,
-        readAppInfo: Number,
-        readNetStats: Number,
-        readDisplay: Number,
-        timeReadGPS: Number,
-        timeReadContact: Number,
-        timeReadAccounts: Number,
-        timeReadAppInfo: Number,
-        timeReadNetStats: Number
+        readGPS: String,
+        readContact: String,
+        readAccounts: String,
+        readAppInfo: String,
+        readNetStats: String,
+        readDisplay: String,
+        shareGPS: String,
+        shareContact: String,
+        shareAccounts: String,
+        shareAppInfo: String,
+        shareNetStats: String,
+        shareDisplay: String,
+        timeReadGPS: String,
+        timeReadContact: String,
+        timeReadAccounts: String,
+        timeReadAppInfo: String,
+        timeReadNetStats: String
       }
   ]
 });
