@@ -32,4 +32,28 @@ PersonalDataSchema.statics.newFromObject = function(object) {
 };
 
 
+PersonalDataSchema.statics.statPersonalDataSource = function () {
+    return Q(this.aggregate(buildStatPersonalDataSourceQuery()).exec());
+};
+
+var buildStatPersonalDataSourceQuery = function () {
+    var aggregations = [];
+    aggregations.push({
+        $group: {
+            _id: '$source',
+            value: {
+                $sum: 1
+            }
+        }
+    }, {
+        $project: {
+            _id: false,
+            name: '$_id',
+            value: true
+        }
+    });
+
+    return aggregations;
+};
+
 module.exports = PersonalDataSchema;

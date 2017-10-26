@@ -116,8 +116,8 @@ module.exports = function() {
         return conn.Message.statClusterMessages(type, terms, from, to, sentiment, language, lat, lng, ray, cluster);
       });
     });
-    
-    router.route('/stats/sentiment/messages')
+
+  router.route('/stats/sentiment/messages')
     // /api/stats/sentiment?db=sexism&from=2015-10-11&to=2015-10-13&type=tag&terms=aword&terms=anotherword
     .get(function(req, res) {
       return handleGenericStat(req, res, function(conn, type, terms, from, to, sentiment, language, lat, lng, ray, sen) {
@@ -157,6 +157,18 @@ module.exports = function() {
       })
     });
 
+    router.route('/stats/personal_data/source')
+        .get(function(req, res) {
+            var dbConn = new CrowdPulse();
+            return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+                    return conn.PersonalData.statPersonalDataSource();
+                })
+                .then(qSend(res))
+                .catch(qErr(res))
+                .finally(function() {
+                    dbConn.disconnect();
+                });
+        });
   
 
   return router;
