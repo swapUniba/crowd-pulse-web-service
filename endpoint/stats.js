@@ -209,5 +209,18 @@ module.exports = function() {
                 });
         });
 
+    router.route('/stats/personal_data/netstat/timeline')
+        .get(function(req, res) {
+            var dbConn = new CrowdPulse();
+            return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+                return conn.PersonalData.statNetStatTimeline(req.query.from, req.query.to);
+            })
+                .then(qSend(res))
+                .catch(qErr(res))
+                .finally(function() {
+                    dbConn.disconnect();
+                });
+        });
+
     return router;
 };

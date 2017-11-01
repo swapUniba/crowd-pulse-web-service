@@ -49,6 +49,10 @@ PersonalDataSchema.statics.statAppInfoTimeline = function (from, to) {
     return Q(this.aggregate(buildStatAppInfoTimeline(from, to)).exec());
 };
 
+PersonalDataSchema.statics.statNetStatTimeline = function (from, to) {
+    return Q(this.aggregate(buildStatNetStatTimeline(from, to)).exec());
+};
+
 var buildStatPersonalDataSourceQuery = function () {
     var aggregations = [];
     aggregations.push({
@@ -233,6 +237,71 @@ var buildStatAppInfoTimeline = function (from, to) {
         $project: {
             _id: false,
             name: "$_id",
+            values: true
+        }
+    });
+
+    return aggregations;
+};
+
+
+var buildStatNetStatTimeline = function (from, to) {
+    var filter = undefined;
+
+    from = new Date(from);
+    to = new Date(to);
+    var hasFrom = !isNaN(from.getDate());
+    var hasTo = !isNaN(to.getDate());
+
+    if (hasFrom || hasTo) {
+        filter = {$match: {}};
+        filter.$match['timestamp'] = {};
+        if (hasFrom) {
+            filter.$match['timestamp']['$gte'] = from.getTime();
+        }
+        if (hasTo) {
+            filter.$match['timestamp']['$lte'] = to.getTime();
+        }
+    }
+
+    var aggregations = [];
+
+    if (filter) {
+        aggregations.push(filter);
+    }
+
+    aggregations.push({
+        $match: {
+            source: "netstats"
+        }
+    }, {
+        $project: {
+            date: {$floor: {$divide: ["$timestamp", 86400000]}},
+            networkType: "$networkType",
+            rxBytes: "$rxBytes",
+            txBytes: "$txBytes"
+        }
+    },{
+        $group: {
+            _id: {networkType: "$networkType", date: "$date"},
+            totalRxBytes: {$sum: "$rxBytes"},
+            totalTxBytes: {$sum: "$txBytes"}
+        }
+    },{
+        $group: {
+            _id: "$_id.networkType",
+            values: {
+                $push: {
+                    date: "$_id.date",
+                    totalRxBytes: "$totalRxBytes",
+                    totalTxBytes: "$totalTxBytes"
+                }
+            }
+        }
+    },  {
+        $project: {
+            _id: false,
+            networkType: "$_id",
             values: true
         }
     });
