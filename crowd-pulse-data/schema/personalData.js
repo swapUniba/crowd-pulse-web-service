@@ -45,6 +45,10 @@ PersonalDataSchema.statics.statAppInfoBar = function (from, to) {
     return Q(this.aggregate(buildStatAppInfoBar(from, to)).exec());
 };
 
+PersonalDataSchema.statics.statAppInfoTimeline = function (from, to) {
+    return Q(this.aggregate(buildStatAppInfoTimeline(from, to)).exec());
+};
+
 var buildStatPersonalDataSourceQuery = function () {
     var aggregations = [];
     aggregations.push({
@@ -169,6 +173,67 @@ var buildStatAppInfoBar = function (from, to) {
             _id: false,
             packageName:  "$_id",
             totalForegroundTime: true
+        }
+    });
+
+    return aggregations;
+};
+
+var buildStatAppInfoTimeline = function (from, to) {
+    var filter = undefined;
+
+    from = new Date(from);
+    to = new Date(to);
+    var hasFrom = !isNaN(from.getDate());
+    var hasTo = !isNaN(to.getDate());
+
+    if (hasFrom || hasTo) {
+        filter = {$match: {}};
+        filter.$match['timestamp'] = {};
+        if (hasFrom) {
+            filter.$match['timestamp']['$gte'] = from.getTime();
+        }
+        if (hasTo) {
+            filter.$match['timestamp']['$lte'] = to.getTime();
+        }
+    }
+
+    var aggregations = [];
+
+    if (filter) {
+        aggregations.push(filter);
+    }
+
+    aggregations.push({
+        $match: {
+            source: "appinfo"
+        }
+    }, {
+        $project: {
+            date: {$floor: {$divide: ["$timestamp", 86400000]}},
+            packageName: "$packageName",
+            foregroundTime: "$foregroundTime"
+        }
+    },{
+        $group: {
+            _id: {packageName: "$packageName", date: "$date"},
+            totalForegroundTime: {$sum: "$foregroundTime"}
+        }
+    },{
+        $group: {
+            _id: "$_id.packageName",
+            values: {
+                $push: {
+                    date: "$_id.date",
+                    value: "$totalForegroundTime"
+                }
+            }
+        }
+    },  {
+        $project: {
+            _id: false,
+            name: "$_id",
+            values: true
         }
     });
 
