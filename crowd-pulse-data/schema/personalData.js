@@ -53,6 +53,11 @@ PersonalDataSchema.statics.statNetStatTimeline = function (from, to) {
     return Q(this.aggregate(buildStatNetStatTimeline(from, to)).exec());
 };
 
+PersonalDataSchema.statics.statNetStatBar = function (from, to) {
+    return Q(this.aggregate(buildStatNetStatBar(from, to)).exec());
+};
+
+
 var buildStatPersonalDataSourceQuery = function () {
     var aggregations = [];
     aggregations.push({
@@ -303,6 +308,61 @@ var buildStatNetStatTimeline = function (from, to) {
             _id: false,
             networkType: "$_id",
             values: true
+        }
+    });
+
+    return aggregations;
+};
+
+
+var buildStatNetStatBar = function (from, to) {
+    var filter = undefined;
+
+    from = new Date(from);
+    to = new Date(to);
+    var hasFrom = !isNaN(from.getDate());
+    var hasTo = !isNaN(to.getDate());
+
+    if (hasFrom || hasTo) {
+        filter = {$match: {}};
+        filter.$match['timestamp'] = {};
+        if (hasFrom) {
+            filter.$match['timestamp']['$gte'] = from.getTime();
+        }
+        if (hasTo) {
+            filter.$match['timestamp']['$lte'] = to.getTime();
+        }
+    }
+
+    var aggregations = [];
+
+    if (filter) {
+        aggregations.push(filter);
+    }
+
+    aggregations.push({
+        $match: {
+            source: "netstats"
+        }
+    },{
+        $project: {
+            date: {$floor: {$divide: ["$timestamp", 86400000]}},
+            networkType: "$networkType",
+            rxBytes: "$rxBytes",
+            txBytes: "$txBytes"
+        }
+    },{
+        $group: {
+            _id: "$networkType",
+            totalRxBytes: {$sum: "$rxBytes"},
+            totalTxBytes: {$sum: "$txBytes"}
+        }
+    },{
+        $project: {
+            _id: false,
+            networkType: "$_id",
+            totalRxBytes: true,
+            totalTxBytes: true
         }
     });
 
