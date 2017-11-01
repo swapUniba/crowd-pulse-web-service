@@ -36,6 +36,15 @@ PersonalDataSchema.statics.statPersonalDataSource = function () {
     return Q(this.aggregate(buildStatPersonalDataSourceQuery()).exec());
 };
 
+
+PersonalDataSchema.statics.statGPSMap = function (from, to, lat, lng, ray) {
+    return Q(this.aggregate(buildStatGPSMapQuery(from, to, lat, lng, ray)).exec());
+};
+
+PersonalDataSchema.statics.statAppInfoBar = function (from, to) {
+    return Q(this.aggregate(buildStatAppInfoBar(from, to)).exec());
+};
+
 var buildStatPersonalDataSourceQuery = function () {
     var aggregations = [];
     aggregations.push({
@@ -50,6 +59,116 @@ var buildStatPersonalDataSourceQuery = function () {
             _id: false,
             name: '$_id',
             value: true
+        }
+    });
+
+    return aggregations;
+};
+
+var buildStatGPSMapQuery = function(from, to, lat, lng, ray) {
+    var filter = undefined;
+
+    from = new Date(from);
+    to = new Date(to);
+    var hasFrom = !isNaN(from.getDate());
+    var hasTo = !isNaN(to.getDate());
+    var hasLat = (typeof lat != 'undefined' && lat!='');
+    var hasLng = (typeof lng != 'undefined' && lng!='');
+    var hasRay = (typeof ray != 'undefined' && ray!='');
+
+    if (hasFrom || hasTo || (hasLat && hasLng && hasRay)) {
+        filter = {$match: {}};
+
+        if (hasFrom || hasTo) {
+            filter.$match['timestamp'] = {};
+            if (hasFrom) {
+                filter.$match['timestamp']['$gte'] = from.getTime();
+            }
+            if (hasTo) {
+                filter.$match['timestamp']['$lte'] = to.getTime();
+            }
+        }
+
+        if (hasLat && hasLng && hasRay) {
+            lng = Number(lng);
+            lat = Number(lat);
+            ray = Number(ray);
+            filter.$match['longitude'] = {$gt: lng - ray, $lt: lng + ray};
+            filter.$match['latitude'] = {$gt: lat - ray, $lt: lat + ray};
+
+        }
+    }
+
+    var aggregations = [];
+
+    if (filter) {
+        aggregations.push(filter);
+    }
+
+    aggregations.push({
+        $match: {
+            latitude: {$exists: true, $ne: 0},
+            longitude: {$exists: true, $ne: 0}
+        }
+    }, {
+        $project: {
+            _id: false,
+            latitude:  true,
+            longitude: true,
+            text: true
+        }
+    }, {
+        $sort: {
+            timestamp: 1
+        }
+    });
+
+    return aggregations;
+};
+
+
+var buildStatAppInfoBar = function (from, to) {
+    var filter = undefined;
+
+    from = new Date(from);
+    to = new Date(to);
+    var hasFrom = !isNaN(from.getDate());
+    var hasTo = !isNaN(to.getDate());
+
+    if (hasFrom || hasTo) {
+        filter = {$match: {}};
+        filter.$match['timestamp'] = {};
+        if (hasFrom) {
+            filter.$match['timestamp']['$gte'] = from.getTime();
+        }
+        if (hasTo) {
+            filter.$match['timestamp']['$lte'] = to.getTime();
+        }
+    }
+
+    var aggregations = [];
+
+    if (filter) {
+        aggregations.push(filter);
+    }
+
+    aggregations.push(/* removed filter {
+        $match: {
+            foregroundTime: {$exists: true}
+        }
+    }, */ {
+        $group: {
+            _id: '$packageName',
+            totalForegroundTime: {
+                $sum: "$foregroundTime"
+            }
+        }
+
+    }, {
+        $project: {
+            _id: false,
+            packageName:  "$_id",
+            totalForegroundTime: true
         }
     });
 

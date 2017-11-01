@@ -123,22 +123,35 @@ module.exports = function (io, crowdPulse) {
                         if (!user) {
                             socket.emit("config", RESPONSE["device_not_found"]);
                         } else {
-                            console.log("Configuration updated");
-                            if (user.deviceConfigs) {
+                            if (data || data.length > 0) {
+                                if (user.deviceConfigs) {
+                                    var found = false;
+                                    for (var i = 0; i < user.deviceConfigs.length && !found; i++) {
+                                        if (deviceId === user.deviceConfigs[i].deviceId) {
+                                            user.deviceConfigs[i] = data;
+                                            found = true;
+                                        }
+                                    }
+                                    if (!found) {
+                                        user.deviceConfigs.push(data);
+                                    }
+                                } else {
+                                    user.deviceConfigs = [data];
+                                }
+                                user.save();
+                                console.log("Configuration updated");
+
+                            } else {
+
+                                //the device is asking for an updated configuration
                                 var found = false;
                                 for (var i = 0; i < user.deviceConfigs.length && !found; i++) {
                                     if (deviceId === user.deviceConfigs[i].deviceId) {
-                                        user.deviceConfigs[i] = data;
+                                        data = user.deviceConfigs[i];
                                         found = true;
                                     }
                                 }
-                                if (!found) {
-                                    user.deviceConfigs.push(data);
-                                }
-                            } else {
-                                user.deviceConfigs = [data];
                             }
-                            user.save();
 
                             RESPONSE["config_acquired"].config = data;
 
@@ -165,6 +178,7 @@ module.exports = function (io, crowdPulse) {
                 if (data.client === "web-ui") {
                     console.log("Send data requested for " + data.deviceId + " by web UI");
                     io.in(data.deviceId).emit("send_data", RESPONSE["data_request_sent"]);
+
                 } else if (data.data) {
                     console.log("Send data started from " + data.deviceId);
                     data.data.forEach(function (element, i) {
