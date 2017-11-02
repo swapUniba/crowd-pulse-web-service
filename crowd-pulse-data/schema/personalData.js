@@ -120,6 +120,7 @@ var buildStatGPSMapQuery = function(from, to, lat, lng, ray) {
 
     aggregations.push({
         $match: {
+            source: "gps",
             latitude: {$exists: true, $ne: 0},
             longitude: {$exists: true, $ne: 0}
         }
@@ -165,11 +166,12 @@ var buildStatAppInfoBar = function (from, to) {
         aggregations.push(filter);
     }
 
-    aggregations.push(/* removed filter {
+    aggregations.push({
         $match: {
-            foregroundTime: {$exists: true}
+            source: "appinfo",
+            foregroundTime: {$gt: 0}
         }
-    }, */ {
+    }, {
         $group: {
             _id: '$packageName',
             totalForegroundTime: {
@@ -215,9 +217,10 @@ var buildStatAppInfoTimeline = function (from, to) {
 
     aggregations.push({
         $match: {
-            source: "appinfo"
+            source: "appinfo",
+            foregroundTime: {$gt: 0}
         }
-    }, {
+    },  {
         $project: {
             date: {$floor: {$divide: ["$timestamp", 86400000]}},
             packageName: "$packageName",
