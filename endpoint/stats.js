@@ -234,5 +234,19 @@ module.exports = function() {
                     dbConn.disconnect();
                 });
         });
+
+    router.route('/stats/personal_data/contact/bar')
+        .get(function(req, res) {
+            var dbConn = new CrowdPulse();
+            return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+                return conn.Connection.statContactBar();
+            })
+                .then(qSend(res))
+                .catch(qErr(res))
+                .finally(function() {
+                    dbConn.disconnect();
+                });
+        });
+
     return router;
 };

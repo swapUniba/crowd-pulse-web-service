@@ -24,5 +24,29 @@ ConnectionSchema.statics.newFromObject = function(object) {
     return new this(object);
 };
 
+ConnectionSchema.statics.statContactBar = function () {
+    return Q(this.aggregate(buildStatContactBarQuery()).exec());
+};
+
+
+var buildStatContactBarQuery = function () {
+    var aggregations = [];
+    aggregations.push({
+        $group: {
+            _id: '$displayName',
+            value: {
+                $sum: 1
+            }
+        }
+    }, {
+        $project: {
+            _id: false,
+            name: '$_id',
+            value: true
+        }
+    });
+
+    return aggregations;
+};
 
 module.exports = ConnectionSchema;
