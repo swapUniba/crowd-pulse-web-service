@@ -208,7 +208,7 @@ var buildStatAppInfoBar = function (from, to) {
     }, {
         $group: {
             _id: '$packageName',
-            totalForegroundTime: {
+            value: {
                 $sum: "$foregroundTime"
             }
         }
@@ -216,8 +216,8 @@ var buildStatAppInfoBar = function (from, to) {
     }, {
         $project: {
             _id: false,
-            packageName:  "$_id",
-            totalForegroundTime: true
+            name:  "$_id",
+            value: true
         }
     });
 
