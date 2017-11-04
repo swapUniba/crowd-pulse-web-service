@@ -58,7 +58,38 @@ PersonalDataSchema.statics.statNetStatBar = function (from, to) {
 };
 
 PersonalDataSchema.statics.statDisplayBar = function (from, to) {
-    return Q(this.aggregate(buildStatDisplayBar(from, to)).exec());
+    return Q(this.aggregate(buildStatDisplayBar(from, to)).exec())
+        .then(function(dataArray) {
+            var aggregate = [];
+            var i = 0;
+            while (i < dataArray.length - 1) {
+                aggregate.push({
+                    time: dataArray[i + 1].timestamp - dataArray[i].timestamp,
+                    state: dataArray[i].state
+                    }
+                );
+                i = i + 1;
+            }
+
+            var result = [{
+                name: "totalOffTime",
+                value: 0
+            },{
+                value: 0,
+                name: "totalOnTime"
+            }];
+
+            i = 0;
+            while (i < aggregate.length) {
+                if (aggregate[i].state === "0") {
+                    result[0].value += aggregate[i].time;
+                } else {
+                    result[1].value += aggregate[i].time;
+                }
+                i++;
+            }
+            return Q(result);
+    });
 };
 
 var buildStatPersonalDataSourceQuery = function () {
@@ -375,7 +406,6 @@ var buildStatNetStatBar = function (from, to) {
     return aggregations;
 };
 
-//TODO complete here
 var buildStatDisplayBar = function (from, to) {
     var filter = undefined;
 
