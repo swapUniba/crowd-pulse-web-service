@@ -17,6 +17,8 @@ var ConnectionSchema = builder(schemas.connection, {
     contactedTimes: Number
 });
 
+ConnectionSchema.index({displayName: 1, deviceId: 1, contactId: 1}, { unique : true });
+
 
 // Model methods
 
@@ -39,6 +41,9 @@ var buildStatContactBarQuery = function () {
             }
         }
     }, {
+        $sort: {value: -1}
+    },
+    {
         $project: {
             _id: false,
             name: '$_id',

@@ -244,6 +244,19 @@ module.exports = function() {
                 .then(qSend(res))
                 .catch(qErr(res))
                 .finally(function() {
+                });
+        });
+
+    //TODO complete here
+    router.route('/stats/display/bar')
+        .get(function(req, res) {
+            var dbConn = new CrowdPulse();
+            return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+                return conn.PersonalData.statDisplayBar(req.query.from, req.query.to);
+            })
+                .then(qSend(res))
+                .catch(qErr(res))
+                .finally(function() {
                     dbConn.disconnect();
                 });
         });

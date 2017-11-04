@@ -8,6 +8,9 @@ const FAIL = 0;         //code for any failure
 const SUCCESS = 1;      //code for any success
 const RECEIVING = 2;    //if mobile app is receiving data (eg. configuration from web app)
 
+const DB_PERSONAL_DATA = "personal_data";
+const WEB_UI_CLIENT = "web-ui";
+
 const RESPONSE = {
     "user_not_found": {
         "code": FAIL,
@@ -68,7 +71,7 @@ module.exports = function (io, crowdPulse) {
                             socket.emit("login", RESPONSE["user_not_found"]);
                         } else {
                             bcrypt.compare(data.password, user.password, function (err, isMatch) {
-                                if (!isMatch && !(data.password === user.password && data.client === "web-ui")) {
+                                if (!isMatch && !(data.password === user.password && data.client === WEB_UI_CLIENT)) {
                                     console.log("Login failed");
                                     socket.emit("login", RESPONSE["wrong_password"]);
                                 } else {
@@ -107,6 +110,8 @@ module.exports = function (io, crowdPulse) {
                             });
                         }
                     });
+                }).finally(function () {
+                    crowdPulse.disconnect();
                 });
             } else {
                 console.log('DeviceID not found');
@@ -156,7 +161,7 @@ module.exports = function (io, crowdPulse) {
                             RESPONSE["config_acquired"].config = data;
 
                             //new configuration coming from web ui
-                            if (data.client === "web-ui") {
+                            if (data.client === WEB_UI_CLIENT) {
                                 RESPONSE["config_acquired"].code = RECEIVING;
                             } else {
                                 RESPONSE["config_acquired"].code = SUCCESS;
@@ -173,12 +178,17 @@ module.exports = function (io, crowdPulse) {
         });
 
         socket.on('send_data', function (data) {
+
+            //device is logged in or data contains correct information
             if ((deviceId && displayName) || (data.deviceId && data.displayName)) {
                 socket.join(data.deviceId);
-                if (data.client === "web-ui") {
+
+                    //web ui is asking data
+                if (data.client === WEB_UI_CLIENT) {
                     console.log("Send data requested for " + data.deviceId + " by web UI");
                     io.in(data.deviceId).emit("send_data", RESPONSE["data_request_sent"]);
 
+                    //device is sending data
                 } else if (data.data) {
                     console.log("Send data started from " + data.deviceId);
                     data.data.forEach(function (element, i) {
@@ -189,11 +199,37 @@ module.exports = function (io, crowdPulse) {
                         if (element.source === "contact") {
                             dbConnection = new CrowdPulse();
                             dbConnection.connect(config.database.url, data.displayName).then(function (conn) {
-                                conn.Connection.newFromObject(element).save();
-                                return dbConnection.connect(config.database.url, "connections");
+
+                                //search contact by deviceId and contactId
+                                conn.Connection.findOne({deviceId: element.deviceId, contactId: element.contactId},
+                                    function (err, contact) {
+                                        if (contact) {
+                                            contact.phoneNumber = element.phoneNumber;
+                                            contact.contactName = element.contactName;
+                                            contact.contactPhoneNumbers = element.contactPhoneNumbers;
+                                            contact.starred = element.starred;
+                                            contact.contactedTimes = element.contactedTimes;
+                                        } else {
+                                            conn.Connection.newFromObject(element).save();
+                                        }
+                                });
+                                return dbConnection.connect(config.database.url, DB_PERSONAL_DATA);
 
                             }).then(function (conn) {
-                                conn.Connection.newFromObject(element).save();
+
+                                //search contact by displayName, deviceId and contactId
+                                conn.Connection.findOne({displayName: element.displayName, deviceId: element.deviceId,
+                                        contactId: element.contactId}, function (err, contact) {
+                                        if (contact) {
+                                            contact.phoneNumber = element.phoneNumber;
+                                            contact.contactName = element.contactName;
+                                            contact.contactPhoneNumbers = element.contactPhoneNumbers;
+                                            contact.starred = element.starred;
+                                            contact.contactedTimes = element.contactedTimes;                                        contact.save();
+                                        } else {
+                                            conn.Connection.newFromObject(element).save();
+                                        }
+                                    });
 
                             }).finally(function () {
                                 console.log("Contact for " + data.deviceId + " saved");
@@ -232,7 +268,7 @@ module.exports = function (io, crowdPulse) {
                             dbConnection = new CrowdPulse();
                             dbConnection.connect(config.database.url, data.displayName).then(function (conn) {
                                 conn.PersonalData.newFromObject(element).save();
-                                return dbConnection.connect(config.database.url, "personal_data");
+                                return dbConnection.connect(config.database.url, DB_PERSONAL_DATA);
 
                             }).then(function (conn) {
                                 conn.PersonalData.newFromObject(element).save();

@@ -16,13 +16,15 @@ var PersonalDataSchema = builder(schemas.personalData, {
     accuracy: Number,
     packageName: String,
     category: String,
-    foregroundTime: String,
+    foregroundTime: Number,
     state: String,
     rxBytes: Number,
     txBytes: Number,
     networkType: String,
     timestamp: Number
 });
+
+PersonalDataSchema.index({displayName: 1, deviceId: 1, timestamp: 1, source: 1}, { unique : true });
 
 
 // Model methods
@@ -31,11 +33,9 @@ PersonalDataSchema.statics.newFromObject = function(object) {
     return new this(object);
 };
 
-
 PersonalDataSchema.statics.statPersonalDataSource = function () {
     return Q(this.aggregate(buildStatPersonalDataSourceQuery()).exec());
 };
-
 
 PersonalDataSchema.statics.statGPSMap = function (from, to, lat, lng, ray) {
     return Q(this.aggregate(buildStatGPSMapQuery(from, to, lat, lng, ray)).exec());
@@ -57,6 +57,9 @@ PersonalDataSchema.statics.statNetStatBar = function (from, to) {
     return Q(this.aggregate(buildStatNetStatBar(from, to)).exec());
 };
 
+PersonalDataSchema.statics.statDisplayBar = function (from, to) {
+    return Q(this.aggregate(buildStatDisplayBar(from, to)).exec());
+};
 
 var buildStatPersonalDataSourceQuery = function () {
     var aggregations = [];
@@ -367,6 +370,43 @@ var buildStatNetStatBar = function (from, to) {
             totalRxBytes: true,
             totalTxBytes: true
         }
+    });
+
+    return aggregations;
+};
+
+//TODO complete here
+var buildStatDisplayBar = function (from, to) {
+    var filter = undefined;
+
+    from = new Date(from);
+    to = new Date(to);
+    var hasFrom = !isNaN(from.getDate());
+    var hasTo = !isNaN(to.getDate());
+
+    if (hasFrom || hasTo) {
+        filter = {$match: {}};
+        filter.$match['timestamp'] = {};
+        if (hasFrom) {
+            filter.$match['timestamp']['$gte'] = from.getTime();
+        }
+        if (hasTo) {
+            filter.$match['timestamp']['$lte'] = to.getTime();
+        }
+    }
+
+    var aggregations = [];
+
+    if (filter) {
+        aggregations.push(filter);
+    }
+
+    aggregations.push({
+        $match: {
+            source: "display"
+        }
+    },{
+        $sort: {timestamp: 1}
     });
 
     return aggregations;
