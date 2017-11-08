@@ -34,20 +34,18 @@ ConnectionSchema.statics.statContactBar = function () {
 var buildStatContactBarQuery = function () {
     var aggregations = [];
     aggregations.push({
-        $group: {
-            _id: '$displayName',
-            value: {
-                $sum: 1
-            }
+        $match: {
+            contactedTimes: {$exists: true}
         }
     }, {
-        $sort: {value: -1}
-    },
-    {
         $project: {
             _id: false,
-            name: '$_id',
-            value: true
+            name: '$contactName',
+            value: '$contactedTimes'
+        }
+    }, {
+        $sort: {
+            value: -1
         }
     });
 
