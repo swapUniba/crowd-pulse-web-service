@@ -41,8 +41,8 @@ PersonalDataSchema.statics.statGPSMap = function (from, to, lat, lng, ray) {
     return Q(this.aggregate(buildStatGPSMapQuery(from, to, lat, lng, ray)).exec());
 };
 
-PersonalDataSchema.statics.statAppInfoBar = function (from, to) {
-    return Q(this.aggregate(buildStatAppInfoBar(from, to)).exec());
+PersonalDataSchema.statics.statAppInfoBar = function (from, to, limitResults) {
+    return Q(this.aggregate(buildStatAppInfoBar(from, to, limitResults)).exec());
 };
 
 PersonalDataSchema.statics.statAppInfoTimeline = function (from, to) {
@@ -175,7 +175,7 @@ var buildStatGPSMapQuery = function(from, to, lat, lng, ray) {
 };
 
 
-var buildStatAppInfoBar = function (from, to) {
+var buildStatAppInfoBar = function (from, to, limitResults) {
     var filter = undefined;
 
     from = new Date(from);
@@ -214,12 +214,20 @@ var buildStatAppInfoBar = function (from, to) {
         }
 
     }, {
+        $sort: {value: -1}
+    },{
         $project: {
             _id: false,
             name:  "$_id",
             value: true
         }
     });
+
+    if (limitResults) {
+        aggregations.push({
+            $limit: parseInt(limitResults)
+        });
+    }
 
     return aggregations;
 };

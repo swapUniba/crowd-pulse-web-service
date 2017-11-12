@@ -26,12 +26,12 @@ ConnectionSchema.statics.newFromObject = function(object) {
     return new this(object);
 };
 
-ConnectionSchema.statics.statContactBar = function () {
-    return Q(this.aggregate(buildStatContactBarQuery()).exec());
+ConnectionSchema.statics.statContactBar = function (limitResults) {
+    return Q(this.aggregate(buildStatContactBarQuery(limitResults)).exec());
 };
 
 
-var buildStatContactBarQuery = function () {
+var buildStatContactBarQuery = function (limitResults) {
     var aggregations = [];
     aggregations.push({
         $match: {
@@ -48,6 +48,12 @@ var buildStatContactBarQuery = function () {
             value: -1
         }
     });
+
+    if (limitResults) {
+        aggregations.push({
+            $limit: parseInt(limitResults)
+        });
+    }
 
     return aggregations;
 };
