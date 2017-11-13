@@ -1,7 +1,7 @@
 'use strict';
 
-var PersnalDataSchema = require('./../schema/personalData');
+var PersonalDataSchema = require('./../schema/personalData');
 
 module.exports = function(mongoose) {
-    return mongoose.model(PersnalDataSchema.statics.getSchemaName(), PersnalDataSchema);
+    return mongoose.model(PersonalDataSchema.statics.getSchemaName(), PersonalDataSchema);
 };

@@ -1,5 +1,6 @@
 'use strict';
 
+var Q = require('q');
 var bcrypt = require('bcrypt');
 var config = require('./../lib/config');
 var CrowdPulse = require('./../crowd-pulse-data');
@@ -52,7 +53,7 @@ const RESPONSE = {
 };
 
 
-module.exports = function (io, crowdPulse) {
+module.exports = function (io) {
 
     io.on('connection', function (socket) {
         var deviceId = null;
@@ -65,56 +66,54 @@ module.exports = function (io, crowdPulse) {
 
             if (data.deviceId) {
                 var dbConnection = new CrowdPulse();
-                dbConnection.connect(config.database.url, DB_PROFILES)
-                    .then(function (conn) {
-                        return conn.Profile.findOne({email: data.email}, function (err, user) {
-                            if (!user) {
-                                console.log("Login failed");
-                                socket.emit("login", RESPONSE["user_not_found"]);
-                            } else {
-                                bcrypt.compare(data.password, user.password, function (err, isMatch) {
-                                    if (!isMatch && !(data.password === user.password && data.client === WEB_UI_CLIENT)) {
-                                        console.log("Login failed");
-                                        socket.emit("login", RESPONSE["wrong_password"]);
-                                    } else {
-                                        console.log("Login Ok");
-                                        displayName = user.displayName;
+                dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+                    conn.Profile.findOne({email: data.email}, function (err, user) {
+                        if (!user) {
+                            console.log("Login failed");
+                            socket.emit("login", RESPONSE["user_not_found"]);
+                        } else {
+                            bcrypt.compare(data.password, user.password, function (err, isMatch) {
+                                if (!isMatch && !(data.password === user.password && data.client === WEB_UI_CLIENT)) {
+                                    console.log("Login failed");
+                                    socket.emit("login", RESPONSE["wrong_password"]);
+                                } else {
+                                    console.log("Login Ok");
+                                    displayName = user.displayName;
 
-                                        var deviceData = {
-                                            deviceId: data.deviceId,
-                                            brand: data.brand,
-                                            model: data.model,
-                                            sdk: data.sdk,
-                                            phoneNumbers: data.phoneNumbers
-                                        };
+                                    var deviceData = {
+                                        deviceId: data.deviceId,
+                                        brand: data.brand,
+                                        model: data.model,
+                                        sdk: data.sdk,
+                                        phoneNumbers: data.phoneNumbers
+                                    };
 
-                                        if (user.devices) {
-                                            var found = false;
-                                            for (var i = 0; i < user.devices.length && !found; i++) {
-                                                if (data.deviceId === user.devices[i].deviceId) {
-                                                    user.devices[i] = deviceData;
-                                                    found = true;
-                                                }
+                                    if (user.devices) {
+                                        var found = false;
+                                        for (var i = 0; i < user.devices.length && !found; i++) {
+                                            if (data.deviceId === user.devices[i].deviceId) {
+                                                user.devices[i] = deviceData;
+                                                found = true;
                                             }
-                                            if (!found) {
-                                                user.devices.push(deviceData);
-                                            }
-                                        } else {
-                                            user.devices = [deviceData];
                                         }
-
-                                        user.save();
-                                        deviceId = data.deviceId;
-                                        socket.join(deviceId);
-                                        RESPONSE["login_success"].displayName = displayName;
-                                        io.in(deviceId).emit("login", RESPONSE["login_success"]);
+                                        if (!found) {
+                                            user.devices.push(deviceData);
+                                        }
+                                    } else {
+                                        user.devices = [deviceData];
                                     }
-                                });
-                            }
-                        });
-                    }).finally(function () {
-                        dbConnection.disconnect();
+
+                                    user.save();
+
+                                    deviceId = data.deviceId;
+                                    socket.join(deviceId);
+                                    RESPONSE["login_success"].displayName = displayName;
+                                    io.in(deviceId).emit("login", RESPONSE["login_success"]);
+                                }
+                            });
+                        }
                     });
+                });
             } else {
                 console.log('DeviceID not found');
                 socket.emit("login", RESPONSE["data_format_error"]);
@@ -125,57 +124,54 @@ module.exports = function (io, crowdPulse) {
         socket.on('config', function (data) {
             if (deviceId) {
                 var dbConnection = new CrowdPulse();
-                dbConnection.connect(config.database.url, DB_PROFILES)
-                    .then(function(conn) {
-                        return conn.Profile.findOne({devices: {$elemMatch: { deviceId: deviceId}}}, function (err, user) {
-                            if (!user) {
-                                socket.emit("config", RESPONSE["device_not_found"]);
-                            } else {
-                                if (data || data.length > 0) {
-                                    if (user.deviceConfigs) {
-                                        var found = false;
-                                        for (var i = 0; i < user.deviceConfigs.length && !found; i++) {
-                                            if (deviceId === user.deviceConfigs[i].deviceId) {
-                                                user.deviceConfigs[i] = data;
-                                                found = true;
-                                            }
-                                        }
-                                        if (!found) {
-                                            user.deviceConfigs.push(data);
-                                        }
-                                    } else {
-                                        user.deviceConfigs = [data];
-                                    }
-                                    user.save();
-                                    console.log("Configuration updated");
-
-                                } else {
-
-                                    //the device is asking for an updated configuration
+                dbConnection.connect(config.database.url, DB_PROFILES).then(function(conn) {
+                    conn.Profile.findOne({devices: {$elemMatch: { deviceId: deviceId}}}, function (err, user) {
+                        if (!user) {
+                            socket.emit("config", RESPONSE["device_not_found"]);
+                        } else {
+                            if (data || data.length > 0) {
+                                if (user.deviceConfigs) {
                                     var found = false;
                                     for (var i = 0; i < user.deviceConfigs.length && !found; i++) {
                                         if (deviceId === user.deviceConfigs[i].deviceId) {
-                                            data = user.deviceConfigs[i];
+                                            user.deviceConfigs[i] = data;
                                             found = true;
                                         }
                                     }
-                                }
-
-                                RESPONSE["config_acquired"].config = data;
-
-                                //new configuration coming from web ui
-                                if (data.client === WEB_UI_CLIENT) {
-                                    RESPONSE["config_acquired"].code = RECEIVING;
+                                    if (!found) {
+                                        user.deviceConfigs.push(data);
+                                    }
                                 } else {
-                                    RESPONSE["config_acquired"].code = SUCCESS;
+                                    user.deviceConfigs = [data];
                                 }
+                                user.save();
+                                console.log("Configuration updated");
 
-                                io.in(deviceId).emit("config", RESPONSE["config_acquired"]);
+                            } else {
+
+                                //the device is asking for an updated configuration
+                                var found = false;
+                                for (var i = 0; i < user.deviceConfigs.length && !found; i++) {
+                                    if (deviceId === user.deviceConfigs[i].deviceId) {
+                                        data = user.deviceConfigs[i];
+                                        found = true;
+                                    }
+                                }
                             }
-                        });
-                    }).finally(function () {
-                        dbConnection.disconnect();
+
+                            RESPONSE["config_acquired"].config = data;
+
+                            //new configuration coming from web ui
+                            if (data.client === WEB_UI_CLIENT) {
+                                RESPONSE["config_acquired"].code = RECEIVING;
+                            } else {
+                                RESPONSE["config_acquired"].code = SUCCESS;
+                            }
+
+                            io.in(deviceId).emit("config", RESPONSE["config_acquired"]);
+                        }
                     });
+                });
             } else {
                 console.log('User not authorized');
                 socket.emit("config", RESPONSE["not_authorized"]);
@@ -201,7 +197,6 @@ module.exports = function (io, crowdPulse) {
                     var contactData = [];
                     var accountData = [];
                     var personalData = [];
-                    var dbConnection;
 
                     //separate data by source
                     data.data.forEach(function (element, i) {
@@ -221,101 +216,17 @@ module.exports = function (io, crowdPulse) {
                         }
                     });
 
-                    if (contactData && contactData.length > 0) {
-                        dbConnection = new CrowdPulse();
-                        dbConnection.connect(config.database.url, data.displayName).then(function (conn) {
-                            contactData.forEach(function (element, i) {
+                    //start the sync event chain
+                    storeContact(contactData, data.displayName);
+                    storeContact(contactData, DB_PERSONAL_DATA);
+                    storeAccount(accountData, data.deviceId);
+                    storePersonalData(personalData, data.displayName);
+                    storePersonalData(personalData, DB_PERSONAL_DATA);
 
-                                //search contact by deviceId and contactId
-                                conn.Connection.findOne({deviceId: element.deviceId, contactId: element.contactId},
-                                    function (err, contact) {
-                                        if (contact) {
-                                            contact.phoneNumber = element.phoneNumber;
-                                            contact.contactName = element.contactName;
-                                            contact.contactPhoneNumbers = element.contactPhoneNumbers;
-                                            contact.starred = element.starred;
-                                            contact.contactedTimes = element.contactedTimes;
-                                            contact.save();
-                                        } else {
-                                            conn.Connection.newFromObject(element).save();
-                                        }
-                                    });
-                            });
-                            return dbConnection.connect(config.database.url, DB_PERSONAL_DATA);
-
-                        }).then(function (conn) {
-                            contactData.forEach(function (element, i) {
-
-                                //search contact by displayName, deviceId and contactId
-                                conn.Connection.findOne({
-                                    displayName: element.displayName, deviceId: element.deviceId,
-                                    contactId: element.contactId
-                                }, function (err, contact) {
-                                    if (contact) {
-                                        contact.phoneNumber = element.phoneNumber;
-                                        contact.contactName = element.contactName;
-                                        contact.contactPhoneNumbers = element.contactPhoneNumbers;
-                                        contact.starred = element.starred;
-                                        contact.contactedTimes = element.contactedTimes;
-                                        contact.save();
-                                    } else {
-                                        conn.Connection.newFromObject(element).save();
-                                    }
-                                });
-                            });
-
-                        }).finally(function () {
-                            console.log("Contacts for " + data.deviceId + " saved");
-                        });
-                    }
-
-
-                    if (accountData && accountData.length > 0) {
-                        dbConnection = new CrowdPulse();
-                        accountData.forEach(function (element, i) {
-                            dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
-                                conn.Profile.findOne({devices: {$elemMatch: {deviceId: data.deviceId}}}, function (err, user) {
-                                    if (!user) {
-                                        io.in(data.deviceId).emit("send_data", RESPONSE["device_not_found"]);
-                                    } else {
-                                        var accountData = {
-                                            userAccountName: element.userAccountName,
-                                            packageName: element.packageName
-                                        };
-
-                                        var found = false;
-                                        for (var i = 0; i < user.accounts.length && !found; i++) {
-
-                                            //accounts already stored do not be saved!
-                                            if (accountData.packageName  === user.accounts[i].packageName
-                                                && accountData.userAccountName === user.accounts[i].userAccountName) {
-                                                found = true;
-                                            }
-                                        }
-                                        if (!found) {
-                                            user.accounts.push(accountData);
-                                        }
-                                        user.save();
-                                        console.log("Account for " + data.deviceId + " saved or updated");
-                                    }
-                                });
-                            });
-                        });
-                    }
-
-                    if (personalData && personalData.length > 0) {
-                        dbConnection = new CrowdPulse();
-                        dbConnection.connect(config.database.url, data.displayName).then(function (conn) {
-                            conn.PersonalData.insertMany(personalData, null);
-                            return dbConnection.connect(config.database.url, DB_PERSONAL_DATA);
-
-                        }).then(function (conn) {
-                            conn.PersonalData.insertMany(personalData, null);
-                        });
-                    }
-
+                    console.log("Send data completed for " + data.deviceId);
                     RESPONSE["data_acquired"].dataIdentifier = data.dataIdentifier;
                     io.in(data.deviceId).emit("send_data", RESPONSE["data_acquired"]);
+
                 } else {
                     console.log('Data not recognized');
                     io.in(data.deviceId).emit("send_data", RESPONSE["data_format_error"]);
@@ -326,5 +237,124 @@ module.exports = function (io, crowdPulse) {
             }
         });
     });
+
+    /**
+     * Store contact in the MongoDB database
+     * @param contactData
+     * @param databaseName
+     */
+    var storeContact = function (contactData, databaseName) {
+        if (contactData && contactData.length > 0) {
+            var dbConnection = new CrowdPulse();
+            dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+                var elementSaved = 0;
+                contactData.forEach(function (element) {
+
+                    //search contact by deviceId, contactId and displayName
+                    conn.Connection.findOne({
+                            deviceId: element.deviceId,
+                            contactId: element.contactId,
+                            displayName: element.displayName
+                        }, function (err, contact) {
+                            if (contact) {
+                                contact.phoneNumber = element.phoneNumber;
+                                contact.contactName = element.contactName;
+                                contact.contactPhoneNumbers = element.contactPhoneNumbers;
+                                contact.starred = element.starred;
+                                contact.contactedTimes = element.contactedTimes;
+                                contact.save();
+                            } else {
+                                conn.Connection.newFromObject(element).save().then(function () {
+                                    elementSaved++;
+                                    if (elementSaved >= contactData.length) {
+                                        console.log(contactData.length + " contacts for " + element.deviceId + " saved into " + databaseName);
+                                        dbConnection.disconnect();
+                                    }
+                                });
+                            }
+
+                        });
+                });
+            });
+
+        } else {
+            console.log("No contacts data received");
+        }
+    };
+
+    /**
+     * Store account in the MongoDB database
+     * @param accountData
+     * @param deviceId
+     */
+    var storeAccount = function (accountData, deviceId) {
+        if (accountData && accountData.length > 0) {
+            var dbConnection = new CrowdPulse();
+            dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+                var elementSaved = 0;
+                accountData.forEach(function (element, j) {
+                    conn.Profile.findOne({devices: {$elemMatch: {deviceId: deviceId}}}, function (err, user) {
+                        if (!user) {
+                            io.in(deviceId).emit("send_data", RESPONSE["device_not_found"]);
+                        } else {
+                            var account = {
+                                userAccountName: element.userAccountName,
+                                packageName: element.packageName
+                            };
+
+                            var found = false;
+                            for (var i = 0; i < user.accounts.length && !found; i++) {
+
+                                //accounts already stored do not be saved!
+                                if (account.packageName === user.accounts[i].packageName
+                                    && account.userAccountName === user.accounts[i].userAccountName) {
+                                    found = true;
+                                }
+                            }
+                            if (!found) {
+                                user.accounts.push(account);
+                            }
+                            user.save().then(function () {
+                                elementSaved++;
+                                if (elementSaved >= accountData.length) {
+                                    dbConnection.disconnect();
+                                    console.log(accountData.length + " accounts for " + deviceId + " saved or updated");
+                                }
+                            });
+                        }
+                    });
+                });
+            });
+        } else {
+            console.log("No accounts data received");
+        }
+    };
+
+    /**
+     * Store generic personal data in the MongoDB database
+     * @param personalData
+     * @param databaseName
+     */
+    var storePersonalData = function (personalData, databaseName) {
+        var dbConnection = new CrowdPulse();
+        if (personalData && personalData.length > 0) {
+
+            dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+                var elementSaved = 0;
+                personalData.forEach(function (element) {
+
+                    conn.PersonalData.newFromObject(element).save().then(function () {
+                        elementSaved++;
+                        if (elementSaved >= personalData.length) {
+                            console.log(personalData.length + " personal data for " + element.deviceId + " data saved into " + databaseName);
+                        }
+                    });
+
+                });
+            });
+        } else {
+            console.log("No personal data received");
+        }
+    };
 
 };

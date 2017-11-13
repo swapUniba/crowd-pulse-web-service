@@ -24,8 +24,6 @@ var PersonalDataSchema = builder(schemas.personalData, {
     timestamp: Number
 });
 
-PersonalDataSchema.index({displayName: 1, deviceId: 1, timestamp: 1, source: 1}, { unique : true });
-
 
 // Model methods
 

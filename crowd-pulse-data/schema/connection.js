@@ -17,8 +17,6 @@ var ConnectionSchema = builder(schemas.connection, {
     contactedTimes: Number
 });
 
-ConnectionSchema.index({displayName: 1, deviceId: 1, contactId: 1}, { unique : true });
-
 
 // Model methods
 

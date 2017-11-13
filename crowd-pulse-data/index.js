@@ -9,8 +9,7 @@ var DataLayer = function() {
   self.connect = function(host, database, port, options, callback) {
     var deferred = Q.defer();
 
-    self.connection = mongoose.createConnection();
-    self.connection.open.apply(self.connection, arguments);
+    self.connection = mongoose.createConnection('mongodb://' + host + "/" + database);
 
     self.connection.on('error', function(err) {
       deferred.reject(err);
