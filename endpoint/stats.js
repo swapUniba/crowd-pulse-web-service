@@ -187,7 +187,7 @@ module.exports = function() {
         .get(function(req, res) {
             var dbConn = new CrowdPulse();
             return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
-                return conn.PersonalData.statAppInfoBar(req.query.from, req.query.to, req.query.limitResults);
+                return conn.PersonalData.statAppInfoBar(req.query.from, req.query.to, req.query.limitResults, req.query.groupByCategory);
             })
                 .then(qSend(res))
                 .catch(qErr(res))

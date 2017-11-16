@@ -39,8 +39,8 @@ PersonalDataSchema.statics.statGPSMap = function (from, to, lat, lng, ray) {
     return Q(this.aggregate(buildStatGPSMapQuery(from, to, lat, lng, ray)).exec());
 };
 
-PersonalDataSchema.statics.statAppInfoBar = function (from, to, limitResults) {
-    return Q(this.aggregate(buildStatAppInfoBar(from, to, limitResults)).exec());
+PersonalDataSchema.statics.statAppInfoBar = function (from, to, limitResults, groupByCategory) {
+    return Q(this.aggregate(buildStatAppInfoBar(from, to, limitResults, groupByCategory)).exec());
 };
 
 PersonalDataSchema.statics.statAppInfoTimeline = function (from, to) {
@@ -173,7 +173,7 @@ var buildStatGPSMapQuery = function(from, to, lat, lng, ray) {
 };
 
 
-var buildStatAppInfoBar = function (from, to, limitResults) {
+var buildStatAppInfoBar = function (from, to, limitResults, groupByCategory) {
     var filter = undefined;
 
     from = new Date(from);
@@ -198,28 +198,54 @@ var buildStatAppInfoBar = function (from, to, limitResults) {
         aggregations.push(filter);
     }
 
-    aggregations.push({
-        $match: {
-            source: "appinfo",
-            foregroundTime: {$gt: 0}
-        }
-    }, {
-        $group: {
-            _id: '$packageName',
-            value: {
-                $sum: "$foregroundTime"
+    if (groupByCategory) {
+        aggregations.push({
+            $match: {
+                source: "appinfo",
+                foregroundTime: {$gt: 0},
+                category: {$exists: true}
             }
-        }
+        }, {
+            $group: {
+                _id: '$category',
+                value: {
+                    $sum: "$foregroundTime"
+                }
+            }
 
-    }, {
-        $sort: {value: -1}
-    },{
-        $project: {
-            _id: false,
-            name:  "$_id",
-            value: true
-        }
-    });
+        }, {
+            $sort: {value: -1}
+        }, {
+            $project: {
+                _id: false,
+                name: "$_id",
+                value: true
+            }
+        });
+    } else {
+        aggregations.push({
+            $match: {
+                source: "appinfo",
+                foregroundTime: {$gt: 0}
+            }
+        }, {
+            $group: {
+                _id: '$packageName',
+                value: {
+                    $sum: "$foregroundTime"
+                }
+            }
+
+        }, {
+            $sort: {value: -1}
+        }, {
+            $project: {
+                _id: false,
+                name: "$_id",
+                value: true
+            }
+        });
+    }
 
     if (limitResults) {
         aggregations.push({
