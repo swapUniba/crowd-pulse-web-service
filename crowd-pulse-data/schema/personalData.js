@@ -198,7 +198,8 @@ var buildStatAppInfoBar = function (from, to, limitResults, groupByCategory) {
         aggregations.push(filter);
     }
 
-    if (groupByCategory) {
+    // boolean value is typed as string
+    if (groupByCategory === "true") {
         aggregations.push({
             $match: {
                 source: "appinfo",
