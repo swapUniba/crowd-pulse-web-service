@@ -80,30 +80,32 @@ module.exports = function (io) {
                                     console.log("Login Ok");
                                     displayName = user.displayName;
 
-                                    var deviceData = {
-                                        deviceId: data.deviceId,
-                                        brand: data.brand,
-                                        model: data.model,
-                                        sdk: data.sdk,
-                                        phoneNumbers: data.phoneNumbers
-                                    };
+                                    if (data.client !== WEB_UI_CLIENT) {
+                                        var deviceData = {
+                                            deviceId: data.deviceId,
+                                            brand: data.brand,
+                                            model: data.model,
+                                            sdk: data.sdk,
+                                            phoneNumbers: data.phoneNumbers
+                                        };
 
-                                    if (user.devices) {
-                                        var found = false;
-                                        for (var i = 0; i < user.devices.length && !found; i++) {
-                                            if (data.deviceId === user.devices[i].deviceId) {
-                                                user.devices[i] = deviceData;
-                                                found = true;
+                                        if (user.devices) {
+                                            var found = false;
+                                            for (var i = 0; i < user.devices.length && !found; i++) {
+                                                if (data.deviceId === user.devices[i].deviceId) {
+                                                    user.devices[i] = deviceData;
+                                                    found = true;
+                                                }
                                             }
+                                            if (!found) {
+                                                user.devices.push(deviceData);
+                                            }
+                                        } else {
+                                            user.devices = [deviceData];
                                         }
-                                        if (!found) {
-                                            user.devices.push(deviceData);
-                                        }
-                                    } else {
-                                        user.devices = [deviceData];
-                                    }
 
-                                    user.save();
+                                        user.save();
+                                    }
 
                                     deviceId = data.deviceId;
                                     socket.join(deviceId);
