@@ -21,7 +21,14 @@ var PersonalDataSchema = builder(schemas.personalData, {
     rxBytes: Number,
     txBytes: Number,
     networkType: String,
-    timestamp: Number
+    timestamp: Number,
+    inVehicle: Number,
+    onBicycle: Number,
+    onFoot: Number,
+    running: Number,
+    still: Number,
+    walking: Number,
+    unknown: Number
 });
 
 

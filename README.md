@@ -5,10 +5,21 @@ Crowd Pulse RESTful Web Service.
 
 -----------------------
 
+## Requirements
+
+Install NodeJS with the following commands:
+
+```
+sudo apt-get update -y
+sudo apt-get install -y build-essential
+curl -sL https://deb.nodesource.com/setup_4.x | sudo -E bash -
+sudo apt-get install -y nodejs
+sudo apt-get install libkrb5-dev
+```
+
 ## Configuration
 
-You can configure the Web service by creating a `config.json` just as the following 
-[sample](config.json.sample):
+You can configure the Web service by creating a `config.json` just as the following sample:
 
 ```json
 {
@@ -33,6 +44,12 @@ Alternatively, you can replace the same information with the following environme
 * `CROWD_PULSE_WS_MONGO_DB` instead of `database.db`
 * `CROWD_PULSE_MAIN_EXE` instead of `crowd-pulse.main`
 * `CROWD_PULSE_LOGS_PATH` instead of `logs.path`
+
+
+## Run
+
+To execute the application, run `sudo node ./bin/crowd-pulse-web-service.js`.
+
 
 ## OAuth 2.0
 

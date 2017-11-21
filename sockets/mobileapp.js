@@ -13,6 +13,10 @@ const DB_PERSONAL_DATA = "personal_data";
 const DB_PROFILES = "profiles";
 const WEB_UI_CLIENT = "web-ui";
 
+// source string type used for filtering data
+const SOURCE_CONTACT = "contact";
+const SOURCE_ACCOUNTS = "accounts";
+
 const RESPONSE = {
     "user_not_found": {
         "code": FAIL,
@@ -206,19 +210,20 @@ module.exports = function (io) {
                         element.deviceId = data.deviceId;
 
                         switch (element.source) {
-                            case "contact":
+                            case SOURCE_CONTACT:
                                 contactData.push(element);
                                 break;
-                            case "accounts":
+                            case SOURCE_ACCOUNTS:
                                 accountData.push(element);
                                 break;
+
+                                // (GPS, NetStats, AppInfo, Activity, ecc.)
                             default:
                                 personalData.push(element);
                                 break;
                         }
                     });
 
-                    //start the sync event chain
                     storeContact(contactData, data.displayName);
                     storeContact(contactData, DB_PERSONAL_DATA);
                     storeAccount(accountData, data.deviceId);
