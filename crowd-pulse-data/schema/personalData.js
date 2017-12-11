@@ -27,6 +27,7 @@ var PersonalDataSchema = builder(schemas.personalData, {
     onFoot: Number,
     running: Number,
     still: Number,
+    tilting: Number,
     walking: Number,
     unknown: Number
 });
