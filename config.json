@@ -11,27 +11,6 @@
     "path": "/opt/crowd-pulse/logs"
   },
   "session": {
-    "secret": "jbdfnsduytraw78rh89xb40tqoeuhaoqwx8q7p3dbry4c9q478crybp9a8xy489rv6q92",
-    "resave": true,
-    "saveUninitialized": false
-  },
-  "users": [
-    {
-      "username": "frapontillo",
-      "email": "francescopontillo@gmail.com",
-      "secret": "holoyolo"
-    }
-  ],
-  "apps": [
-    {
-      "name": "crowd-pulse-admin",
-      "secret": "yolo123",
-      "allowedGrants": [
-        "authorization_code",
-        "password",
-        "refresh_token",
-        "client_credentials"
-      ]
-    }
-  ]
+    "secret": "secret-test-to-change-to-more-security"
+  }
 }
