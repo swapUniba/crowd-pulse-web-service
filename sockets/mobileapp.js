@@ -1,7 +1,7 @@
 'use strict';
 
 var Q = require('q');
-var bcrypt = require('bcrypt');
+var bcrypt = require('bcryptjs');
 var config = require('./../lib/config');
 var CrowdPulse = require('./../crowd-pulse-data');
 
