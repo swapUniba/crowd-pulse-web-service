@@ -39,7 +39,8 @@ module.exports = function() {
                     message: "Invalid email and/or password."
                   });
                 } else {
-                  var token = jwt.sign({email: user.email}, config.session.secret, {expiresIn: TOKEN_EXPIRE});
+                  var token = jwt.sign({email: user.email, displayName: user.displayName},
+                    config.session.secret, {expiresIn: TOKEN_EXPIRE});
                   res.send({
                     auth: true,
                     token: token
