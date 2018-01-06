@@ -39,11 +39,12 @@ module.exports = function() {
                     message: "Invalid email and/or password."
                   });
                 } else {
-                  var token = jwt.sign({email: user.email, displayName: user.displayName},
+                  var token = jwt.sign({email: user.email, username: user.username},
                     config.session.secret, {expiresIn: TOKEN_EXPIRE});
                   res.send({
                     auth: true,
-                    token: token
+                    token: token,
+                    username: user.username
                   });
                 }
               });
@@ -78,8 +79,8 @@ module.exports = function() {
                 message: 'Email is already taken'
               });
             } else {
-              conn.Profile.findOne({displayName: req.body.displayName}, function (err, userDisplayName) {
-                if (userDisplayName) {
+              conn.Profile.findOne({username: req.body.username}, function (err, username) {
+                if (username) {
                   res.status(409);
                   res.json({
                     auth: false,
@@ -92,7 +93,7 @@ module.exports = function() {
                   var encryptedPassword = bcrypt.hashSync(req.body.password, salt);
                   var user = {
                     email: req.body.email,
-                    displayName: req.body.displayName,
+                    username: req.body.username,
                     password: encryptedPassword
                   };
                   conn.Profile.newFromObject(user).save().then(function () {

@@ -69,7 +69,7 @@ module.exports = function() {
 
         res.status(200);
 
-        // TODO temporary code
+        // TODO temporary code, delete here
         res.json({
           oauthToken: oauthData.oauth_token,
           oauthTokenSecret: oauthData.oauth_token_secret
@@ -85,11 +85,14 @@ module.exports = function() {
    */
   router.route('/twitter/user_timeline')
     .post(function (req, res) {
+
+      // TODO get ouathToken from the database
+
       var oauth = {
         consumer_key: CONSUMER_KEY,
         consumer_secret: CONSUMER_SECRET,
-        token: req.body.oauthToken,
-        token_secret: req.body.oauthTokenSecret
+        token: req.body.oauthToken,             // TODO delete here, get from DB if any
+        token_secret: req.body.oauthTokenSecret // TODO delete here, get from DB if any
       };
 
       request.get({url: API_TIMELINE, oauth: oauth, json:true}, function (error, response, tweets) {
