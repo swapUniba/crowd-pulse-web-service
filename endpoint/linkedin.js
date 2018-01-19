@@ -5,6 +5,8 @@ var request = require('request');
 var qs = require('querystring');
 var CrowdPulse = require('./../crowd-pulse-data');
 var config = require('./../lib/config');
+var databaseName = require('./../crowd-pulse-data/databaseName');
+var LinkedInProfileSchema = require('./../crowd-pulse-data/schema/linkedinProfile');
 
 const CLIENT_ID = '77kw2whm8zdmzr';
 const CLIENT_SECRET = 'IgFP60GaF2Sa8jzD';
@@ -69,15 +71,26 @@ module.exports = function() {
             res.sendStatus(500);
           } else {
 
-            // TODO save access token in the database
-
-            res.status(200);
-            res.json({
-              accessToken: body.access_token,
-              expiresIn: body.expires_in
+            // save oauthData in the database
+            var dbConnection = new CrowdPulse();
+            return dbConnection.connect(config.database.url, databaseName.profiles).then(function (conn) {
+              return conn.Profile.findOne({username: req.session.username}, function (err, profile) {
+                if (profile) {
+                  profile.identities.configs.linkedInConfig = {
+                    accessToken: body.access_token,
+                    expiresIn: body.expires_in
+                  };
+                  profile.save();
+                }
+                res.status(200);
+                res.json({auth: true});
+              });
+            }).then(function () {
+              dbConnection.disconnect();
             });
           }
         });
+
       } catch(err) {
         console.log(err);
         res.sendStatus(500);
@@ -87,23 +100,14 @@ module.exports = function() {
 
   /**
    * Get LinkedIn user profile information.
-   * Params:
-   *    accessToken - obtained after the user request
    */
   router.route('/linkedin/profile')
-    .post(function (req, res) {
+    .get(function (req, res) {
       try {
-        var params = {
-          oauth2_access_token: req.body.accessToken,
-          format: 'json'
-        };
-        request.get({url: API_PEOPLE, qs: params, json: true}, function (err, response, profile) {
-
-          // TODO save profile data
-          console.log(profile);
-
+        updateUserProfile(req.session.username, function (profile) {
+          res.status(200);
+          res.json({auth: true, user: profile});
         });
-
       } catch(err) {
         console.log(err);
         res.sendStatus(500);
@@ -112,5 +116,92 @@ module.exports = function() {
     });
 
 
+  /**
+   * Delete LinkedIn information account.
+   */
+  router.route('/linkedin/delete')
+    .delete(function (req, res) {
+      try {
+        var dbConnection = new CrowdPulse();
+        return dbConnection.connect(config.database.url, databaseName.profiles).then(function (conn) {
+          return conn.Profile.findOne({username: req.session.username}, function (err, profile) {
+            if (profile) {
+              profile.identities.linkedIn = undefined;
+              profile.identities.configs.linkedInConfig = undefined;
+              profile.save();
+
+              res.status(200);
+              res.json({auth: true});
+            }
+          });
+        }).then(function () {
+          dbConnection.disconnect();
+        });
+
+      } catch(err) {
+        console.log(err);
+        res.sendStatus(500);
+      }
+    });
+
+
   return router;
+};
+
+/**
+ * Update the user profile information.
+ * @param username
+ * @param callback
+ */
+var updateUserProfile = function (username, callback) {
+
+  // api parameters
+  var params = {
+    oauth2_access_token: null,
+    format: 'json'
+  };
+
+  // get access token data from database
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, databaseName.profiles).then(function (conn) {
+    return conn.Profile.findOne({username: username});
+  }).then(function (profile) {
+    if (profile) {
+      params.oauth2_access_token = profile.identities.configs.linkedInConfig.accessToken;
+
+      request.get({url: API_PEOPLE, qs: params, json: true}, function (err, response, userData) {
+        if (err) {
+          return err;
+        }
+
+        // save the LinkedIn user ID
+        profile.identities.linkedIn.linkedInId = userData.id;
+        profile.identities.configs.linkedInConfig.linkedInId = userData.id;
+
+        // save other returned data
+        for (var key in LinkedInProfileSchema) {
+          if (LinkedInProfileSchema.hasOwnProperty(key) && userData[key]) {
+            profile.identities.linkedIn[key] = userData[key];
+          }
+        }
+
+        // save location
+        if (userData.location) {
+          profile.identities.linkedIn.location = userData.location.name;
+        }
+
+        // change profile picture
+        if (userData.pictureUrl) {
+          profile.pictureUrl = profile.identities.linkedIn.pictureUrl;
+        }
+
+        // save profile in the DB
+        profile.save().then(function () {
+          dbConnection.disconnect();
+        });
+
+        callback(profile);
+      });
+    }
+  });
 };

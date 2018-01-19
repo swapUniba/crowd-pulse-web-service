@@ -13,5 +13,6 @@ module.exports = {
   token: 'Token',
   user: 'User',
   personalData: 'PersonalData',
-  connection: 'Connection'
+  connection: 'Connection',
+  like: 'Like'
 };

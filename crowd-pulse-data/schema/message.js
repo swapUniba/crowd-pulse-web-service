@@ -9,6 +9,7 @@ var MessageSchema = builder(schemas.message, {
   id: mongoose.Schema.ObjectId,
   oId: String,
   text: String,
+  story: String,
   source: String,
   fromUser: String,
   toUsers: [String],
@@ -27,6 +28,10 @@ var MessageSchema = builder(schemas.message, {
   number_cluster: Number,
   cluster_kmeans: Number
 });
+
+MessageSchema.statics.newFromObject = function(object) {
+  return new this(object);
+};
 
 var buildSearchQuery = function(type, search) {
   var queryOn;

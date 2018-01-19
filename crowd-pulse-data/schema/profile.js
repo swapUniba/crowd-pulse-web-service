@@ -4,6 +4,10 @@ var Q = require('q');
 var _ = require('lodash');
 var mongoose = require('mongoose');
 var builder = require('./schemaBuilder');
+var TwitterProfileSchema = require('./../schema/twitterProfile');
+var FacebookProfileSchema = require('./../schema/facebookProfile');
+var LinkedInProfileSchema = require('./../schema/linkedinProfile');
+
 var schemas = require('./schemaName');
 
 var ProfileSchema = builder(schemas.profile, {
@@ -13,6 +17,7 @@ var ProfileSchema = builder(schemas.profile, {
   displayName: String,
   password: String,
   username: String,
+  pictureUrl: String,
   customTags: [String],
   activationDate: Date,
   followers: Number,
@@ -22,46 +27,71 @@ var ProfileSchema = builder(schemas.profile, {
   latitude: Number,
   longitude: Number,
   connections: [String],
-  devices: [
-    {
-      deviceId: String,
-      brand: String,
-      model: String,
-      sdk: Number,
-      phoneNumbers: [String]
+  identities: {
+    twitter: TwitterProfileSchema,
+    facebook: FacebookProfileSchema,
+    linkedIn: LinkedInProfileSchema,
+    devices: [
+      {
+        deviceId: String,
+        brand: String,
+        model: String,
+        sdk: Number,
+        phoneNumbers: [String]
+      }
+    ],
+    accounts: [
+      {
+        userAccountName: String,
+        packageName: String
+      }
+    ],
+    configs: {
+      facebookConfig: {
+        facebookId: String,
+        accessToken: String,
+        expiresIn: Number,
+        lastPostId: String,
+        lastLikeId: String
+      },
+      twitterConfig: {
+        twitterId: String,
+        oauthToken: String,
+        oauthTokenSecret: String,
+        lastTweetId: String
+      },
+      linkedInConfig: {
+        linkedInId: String,
+        accessToken: String,
+        expiresIn: Number
+      },
+      devicesConfig: [
+        {
+          deviceId: String,
+          readGPS: String,
+          readContact: String,
+          readAccounts: String,
+          readAppInfo: String,
+          readNetStats: String,
+          readDisplay: String,
+          readActivity: String,
+          shareGPS: String,
+          shareContact: String,
+          shareAccounts: String,
+          shareAppInfo: String,
+          shareNetStats: String,
+          shareDisplay: String,
+          shareActivity: String,
+          timeReadGPS: String,
+          timeReadContact: String,
+          timeReadAccounts: String,
+          timeReadAppInfo: String,
+          timeReadNetStats: String,
+          timeReadActivity: String
+        }
+      ]
     }
-  ],
-  accounts: [
-    {
-      userAccountName: String,
-      packageName: String
-    }
-  ],
-  deviceConfigs: [
-    {
-      deviceId: String,
-      readGPS: String,
-      readContact: String,
-      readAccounts: String,
-      readAppInfo: String,
-      readNetStats: String,
-      readDisplay: String,
-      readActivity: String,
-      shareGPS: String,
-      shareContact: String,
-      shareAccounts: String,
-      shareAppInfo: String,
-      shareNetStats: String,
-      shareDisplay: String,
-      shareActivity: String,
-      timeReadGPS: String,
-      timeReadContact: String,
-      timeReadAccounts: String,
-      timeReadAppInfo: String,
-      timeReadNetStats: String,
-      timeReadActivity: String
-    }
-  ]
+  }
 });
 
 ProfileSchema.statics.newFromObject = function(object) {

@@ -25,7 +25,7 @@ module.exports = function() {
         return dbConn.connect(config.database.url, DB_PROFILES).then(function (conn) {
           return conn.Profile.findOne({email: req.body.email}, function (err, user) {
             if (!user) {
-              res.status(401);
+              res.status(409);
               res.json({
                 auth: false,
                 message: "Invalid email and/or password."
@@ -33,7 +33,7 @@ module.exports = function() {
             } else {
               bcrypt.compare(req.body.password, user.password, function (err, isMatch) {
                 if (!isMatch) {
-                  res.status(401);
+                  res.status(409);
                   res.json({
                     auth: false,
                     message: "Invalid email and/or password."
@@ -97,7 +97,8 @@ module.exports = function() {
                     password: encryptedPassword
                   };
                   conn.Profile.newFromObject(user).save().then(function () {
-                    var token = jwt.sign({email: user.email}, config.session.secret, {expiresIn: TOKEN_EXPIRE});
+                    var token = jwt.sign({email: user.email, username: user.username},
+                      config.session.secret, {expiresIn: TOKEN_EXPIRE});
                     res.send({
                       auth: true,
                       token: token

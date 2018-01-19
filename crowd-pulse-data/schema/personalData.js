@@ -7,7 +7,7 @@ var schemas = require('./schemaName');
 
 var PersonalDataSchema = builder(schemas.personalData, {
     id: mongoose.Schema.ObjectId,
-    displayName: String,
+    username: String,
     deviceId: String,
     source: String,
     latitude: Number,

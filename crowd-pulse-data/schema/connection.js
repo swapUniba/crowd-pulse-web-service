@@ -8,7 +8,7 @@ var schemas = require('./schemaName');
 var ConnectionSchema = builder(schemas.connection, {
     id: mongoose.Schema.ObjectId,
     source: String,
-    displayName: String,
+    username: String,
     deviceId: String,
     contactId: String,
     contactName: String,
