@@ -195,6 +195,11 @@ exports.endpoint = function() {
  */
 var updateUserProfile = function(username, callback) {
 
+  // default empty callback
+  if (!callback) {
+    callback = function () {}
+  }
+
   // twitter oauth data
   var oauth = {
     consumer_key: CONSUMER_KEY,
@@ -226,7 +231,9 @@ var updateUserProfile = function(username, callback) {
         }
 
         // save the Twitter user ID
-        profile.identities.twitter.twitterId = userData.id;
+        if (userData.id) {
+          profile.identities.twitter.twitterId = userData.id;
+        }
 
         // save other returned data
         for (var key in TwitterProfileSchema) {
@@ -243,6 +250,7 @@ var updateUserProfile = function(username, callback) {
 
         // save profile in the DB
         profile.save().then(function () {
+          console.log("Twitter profile of " + username + " updated at " + new Date());
           dbConnection.disconnect();
         });
 
@@ -335,6 +343,9 @@ var storeMessages = function(messages, databaseName) {
   var dbConnection = new CrowdPulse();
   var messagesSaved = 0;
   return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+    if (messages.length <= 0) {
+      return dbConnection.disconnect();
+    }
     messages.forEach(function (message) {
       return conn.Message.newFromObject(message).save().then(function () {
         messagesSaved++;

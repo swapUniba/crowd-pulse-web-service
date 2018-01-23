@@ -19,7 +19,7 @@ const API_PEOPLE = 'https://api.linkedin.com/v1/people/~:(id,first-name,last-nam
   'educations,courses,volunteer,num-recommenders,following,date-of-birth,honors-awards)';
 
 
-module.exports = function() {
+exports.endpoint = function() {
 
   /**
    * Creates a login dialog URL.
@@ -155,6 +155,11 @@ module.exports = function() {
  */
 var updateUserProfile = function (username, callback) {
 
+  // default empty callback
+  if (!callback) {
+    callback = function () {}
+  }
+
   // api parameters
   var params = {
     oauth2_access_token: null,
@@ -175,8 +180,10 @@ var updateUserProfile = function (username, callback) {
         }
 
         // save the LinkedIn user ID
-        profile.identities.linkedIn.linkedInId = userData.id;
-        profile.identities.configs.linkedInConfig.linkedInId = userData.id;
+        if (userData.id) {
+          profile.identities.linkedIn.linkedInId = userData.id;
+          profile.identities.configs.linkedInConfig.linkedInId = userData.id;
+        }
 
         // save other returned data
         for (var key in LinkedInProfileSchema) {
@@ -197,6 +204,7 @@ var updateUserProfile = function (username, callback) {
 
         // save profile in the DB
         profile.save().then(function () {
+          console.log("LinkedIn profile of " + username + " updated at " + new Date());
           dbConnection.disconnect();
         });
 
@@ -205,3 +213,5 @@ var updateUserProfile = function (username, callback) {
     }
   });
 };
+
+exports.updateUserProfile = updateUserProfile;

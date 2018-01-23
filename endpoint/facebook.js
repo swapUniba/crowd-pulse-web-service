@@ -26,7 +26,7 @@ const API_USER_LIKES = 'https://graph.facebook.com/v2.11/me/likes';
 const API_USER_DATA = 'https://graph.facebook.com/v2.11/me?fields=' + FIELDS.join(',');
 
 
-module.exports = function() {
+exports.endpoint = function() {
 
   /**
    * Creates a login dialog URL.
@@ -239,6 +239,12 @@ module.exports = function() {
  * @param callback
  */
 var updateUserProfile = function(username, callback) {
+
+  // default empty callback
+  if (!callback) {
+    callback = function () {}
+  }
+
   var dbConnection = new CrowdPulse();
   return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
     return conn.Profile.findOne({username: username}, function (err, profile) {
@@ -267,17 +273,26 @@ var updateUserProfile = function(username, callback) {
           }
 
           // save languages as array string
-          var langs = [];
-          userData.languages.forEach(function(lang) {langs.push(lang.name)});
-          profile.identities.facebook.languages = langs;
+          if (userData.languages) {
+            var langs = [];
+            userData.languages.forEach(function (lang) {
+              langs.push(lang.name)
+            });
+            profile.identities.facebook.languages = langs;
+          }
 
           // save picture url
-          profile.identities.facebook.picture = 'https://graph.facebook.com/v2.3/' + userData.id + '/picture?type=large';
+          if (userData.id) {
+            profile.identities.facebook.picture = 'https://graph.facebook.com/v2.3/' + userData.id + '/picture?type=large';
+          }
 
           // change profile picture
-          profile.pictureUrl = profile.identities.facebook.picture;
+          if (profile.identities.facebook.picture) {
+            profile.pictureUrl = profile.identities.facebook.picture;
+          }
 
           profile.save().then(function () {
+            console.log("Facebook profile of " + username + " updated at " + new Date());
             dbConnection.disconnect();
           });
 
@@ -285,6 +300,7 @@ var updateUserProfile = function(username, callback) {
         });
       } else {
         callback(null);
+        dbConnection.disconnect();
       }
     });
   });
@@ -308,59 +324,54 @@ var updatePosts = function(username) {
           limit: 1000
         };
 
-        if (params.access_token) {
+        // retrieve posts of the current user
+        request.get({ url: API_USER_POSTS, qs: params, json: true }, function(err, response, posts) {
 
-          // retrieve posts of the current user
-          request.get({ url: API_USER_POSTS, qs: params, json: true }, function(err, response, posts) {
+          if (response.statusCode !== 200) {
+            return err;
+          }
 
-            if (response.statusCode !== 200) {
-              return err;
+          var messages = [];
+          posts.data.forEach(function (post) {
+            var toUsers = null;
+            if (post.to) {
+              toUsers = post.to.map(function (users) {
+                return users.name;
+              });
             }
+            messages.push({
+              oId: post.id,
+              text: post.message,
+              source: 'facebook_' + facebookConfig.facebookId,
+              fromUser: facebookConfig.facebookId,
+              date: new Date(post.created_time),
+              story: post.story,
+              shares: post.shares,
+              toUsers: toUsers
+            });
+          });
 
-            var messages = [];
-            posts.data.forEach(function (post) {
-              var toUsers = null;
-              if (post.to) {
-                toUsers = post.to.map(function (users) {
-                  return users.name;
+          storeMessages(messages, username).then(function () {
+            storeMessages(messages, databaseName.globalData).then(function () {
+              if (messages[0]) {
+
+                // create new db connection to save last post timestamp in the user profile config
+                dbConnection = new CrowdPulse();
+                return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+                  return conn.Profile.findOne({username: username}, function (err, profile) {
+                    if (profile) {
+                      profile.identities.configs.facebookConfig.lastPostId = messages[0].date.getTime() / 1000;
+                      profile.save().then(function () {
+                        dbConnection.disconnect();
+                      });
+                    }
+                  });
                 });
               }
-              messages.push({
-                oId: post.id,
-                text: post.message,
-                source: 'facebook_' + facebookConfig.facebookId,
-                fromUser: facebookConfig.facebookId,
-                date: new Date(post.created_time),
-                story: post.story,
-                shares: post.shares,
-                toUsers: toUsers
-              });
             });
-
-            storeMessages(messages, username).then(function () {
-              storeMessages(messages, databaseName.globalData).then(function () {
-                if (messages[0]) {
-
-                  // create new db connection to save last post timestamp in the user profile config
-                  dbConnection = new CrowdPulse();
-                  return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
-                    return conn.Profile.findOne({username: username}, function (err, profile) {
-                      if (profile) {
-                        profile.identities.configs.facebookConfig.lastPostId = messages[0].date.getTime() / 1000;
-                        profile.save().then(function () {
-                          dbConnection.disconnect();
-                        });
-                      }
-                    });
-                  });
-                }
-              });
-            });
-
           });
-        }
+        });
       }
-
     });
   });
 };
@@ -382,54 +393,53 @@ var updateLikes = function(username) {
           limit: 1000
         };
 
-        if (params.access_token) {
+        // retrieve likes of the current user
+        request.get({ url: API_USER_LIKES, qs: params, json: true }, function(err, response, likes) {
 
-          // retrieve likes of the current user
-          request.get({ url: API_USER_LIKES, qs: params, json: true }, function(err, response, likes) {
+          if (response.statusCode !== 200) {
+            return err;
+          }
 
-            if (response.statusCode !== 200) {
-              return err;
-            }
-
-            var likesToSave = [];
-            var i = 0;
-            if (!facebookConfig.lastLikeId) {
-              facebookConfig.lastLikeId = 0;
-            }
+          var likesToSave = [];
+          var i = 0;
+          if (!facebookConfig.lastLikeId) {
+            facebookConfig.lastLikeId = 0;
+          }
+          while (i < likes.data.length) {
             var likeDate = new Date(likes.data[i].created_time);
-            while (i < likes.data.length && likeDate.getTime() > facebookConfig.lastLikeId) {
-              likeDate = new Date(likes.data[i].created_time);
-              likesToSave.push({
-                oId: likes.data[i].id,
-                name: likes.data[i].name,
-                source: 'facebook_' + facebookConfig.facebookId,
-                fromUser: facebookConfig.facebookId,
-                date: likeDate
-              });
-              i++;
+            if (likeDate.getTime() <= facebookConfig.lastLikeId) {
+              break;
             }
+            likesToSave.push({
+              oId: likes.data[i].id,
+              name: likes.data[i].name,
+              source: 'facebook_' + facebookConfig.facebookId,
+              fromUser: facebookConfig.facebookId,
+              date: likeDate
+            });
+            i++;
+          }
 
-            storeLikes(likesToSave, username).then(function () {
-              storeLikes(likesToSave, databaseName.globalData).then(function () {
-                if (likesToSave[0]) {
+          storeLikes(likesToSave, username).then(function () {
+            storeLikes(likesToSave, databaseName.globalData).then(function () {
+              if (likesToSave[0]) {
 
-                  // create new db connection to save last like timestamp in the user profile config
-                  dbConnection = new CrowdPulse();
-                  return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
-                    return conn.Profile.findOne({username: username}, function (err, profile) {
-                      if (profile) {
-                        profile.identities.configs.facebookConfig.lastLikeId = likesToSave[0].date.getTime();
-                        profile.save().then(function () {
-                          dbConnection.disconnect();
-                        });
-                      }
-                    });
+                // create new db connection to save last like timestamp in the user profile config
+                dbConnection = new CrowdPulse();
+                return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+                  return conn.Profile.findOne({username: username}, function (err, profile) {
+                    if (profile) {
+                      profile.identities.configs.facebookConfig.lastLikeId = likesToSave[0].date.getTime();
+                      profile.save().then(function () {
+                        dbConnection.disconnect();
+                      });
+                    }
                   });
-                }
-              });
+                });
+              }
             });
           });
-        }
+        });
       }
     });
   });
@@ -445,6 +455,9 @@ var storeMessages = function(messages, databaseName) {
   var dbConnection = new CrowdPulse();
   var messagesSaved = 0;
   return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+    if (messages.length <= 0) {
+      return dbConnection.disconnect();
+    }
     messages.forEach(function (message) {
       return conn.Message.newFromObject(message).save().then(function () {
         messagesSaved++;
@@ -466,6 +479,9 @@ var storeLikes = function(likes, databaseName) {
   var dbConnection = new CrowdPulse();
   var likesSaved = 0;
   return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+    if (likes.length <= 0) {
+      return dbConnection.disconnect();
+    }
     likes.forEach(function (like) {
       return conn.Like.newFromObject(like).save().then(function () {
         likesSaved++;
