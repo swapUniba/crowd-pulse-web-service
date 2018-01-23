@@ -5,12 +5,16 @@
     "db": "admin"
   },
   "crowd-pulse": {
-    "main": "/opt/crowd-pulse/build/install/crowd-pulse/bin/crowd-pulse"
+    "main": "/opt/crowd-pulse/build/install/crowd-pulse/bin/crowd-pulse",
+    "standardPipeline": ""
   },
   "logs": {
     "path": "/opt/crowd-pulse/logs"
   },
   "session": {
     "secret": "secret-test-to-change-to-more-security"
+  },
+  "batch": {
+    "timeout": ""
   }
 }
