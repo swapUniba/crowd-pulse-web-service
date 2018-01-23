@@ -4,13 +4,14 @@ var Q = require('q');
 var bcrypt = require('bcryptjs');
 var config = require('./../lib/config');
 var CrowdPulse = require('./../crowd-pulse-data');
+var databaseName = require('./../crowd-pulse-data/databaseName');
 
 const FAIL = 0;         //code for any failure
 const SUCCESS = 1;      //code for any success
 const RECEIVING = 2;    //if mobile app is receiving data (eg. configuration from web app)
 
-const DB_PERSONAL_DATA = "personal_data";
-const DB_PROFILES = "profiles";
+const DB_GLOBAL_DATA = databaseName.globalData;
+const DB_PROFILES = databaseName.profiles;
 const WEB_UI_CLIENT = "web-ui";
 
 // source string type used for filtering data
@@ -61,7 +62,7 @@ module.exports = function (io) {
 
   io.on('connection', function (socket) {
     var deviceId = null;
-    var displayName = null;
+    var username = null;
 
     console.log('A user connected: ' + socket.id);
 
@@ -70,8 +71,8 @@ module.exports = function (io) {
 
       if (data.deviceId) {
         var dbConnection = new CrowdPulse();
-        dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
-          conn.Profile.findOne({email: data.email}, function (err, user) {
+        return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+          return conn.Profile.findOne({email: data.email}, function (err, user) {
             if (!user) {
               console.log("Login failed");
               socket.emit("login", RESPONSE["user_not_found"]);
@@ -82,7 +83,7 @@ module.exports = function (io) {
                   socket.emit("login", RESPONSE["wrong_password"]);
                 } else {
                   console.log("Login Ok");
-                  displayName = user.displayName;
+                  username = user.username;
 
                   if (data.client !== WEB_UI_CLIENT) {
                     var deviceData = {
@@ -93,27 +94,30 @@ module.exports = function (io) {
                       phoneNumbers: data.phoneNumbers
                     };
 
-                    if (user.devices) {
+                    if (user.identities.devices) {
                       var found = false;
-                      for (var i = 0; i < user.devices.length && !found; i++) {
-                        if (data.deviceId === user.devices[i].deviceId) {
-                          user.devices[i] = deviceData;
+                      for (var i = 0; i < user.identities.devices.length && !found; i++) {
+                        if (data.deviceId === user.identities.devices[i].deviceId) {
+                          user.identities.devices[i] = deviceData;
                           found = true;
                         }
                       }
                       if (!found) {
-                        user.devices.push(deviceData);
+                        user.identities.devices.push(deviceData);
                       }
                     } else {
-                      user.devices = [deviceData];
+                      user.identities.devices = [deviceData];
                     }
 
-                    user.save();
+                    user.save().then(function () {
+                      dbConnection.disconnect();
+                    });
                   }
 
                   deviceId = data.deviceId;
                   socket.join(deviceId);
-                  RESPONSE["login_success"].displayName = displayName;
+
+                  RESPONSE["login_success"].username = username;
                   io.in(deviceId).emit("login", RESPONSE["login_success"]);
                 }
               });
@@ -130,36 +134,38 @@ module.exports = function (io) {
     socket.on('config', function (data) {
       if (deviceId) {
         var dbConnection = new CrowdPulse();
-        dbConnection.connect(config.database.url, DB_PROFILES).then(function(conn) {
-          conn.Profile.findOne({devices: {$elemMatch: { deviceId: deviceId}}}, function (err, user) {
+        return dbConnection.connect(config.database.url, DB_PROFILES).then(function(conn) {
+          return conn.Profile.findOne({'identities.devices': {$elemMatch: { deviceId: deviceId}}}, function (err, user) {
             if (!user) {
               socket.emit("config", RESPONSE["device_not_found"]);
             } else {
               if (data || data.length > 0) {
-                if (user.deviceConfigs) {
+                if (user.identities.configs.devicesConfig) {
                   var found = false;
-                  for (var i = 0; i < user.deviceConfigs.length && !found; i++) {
-                    if (deviceId === user.deviceConfigs[i].deviceId) {
-                      user.deviceConfigs[i] = data;
+                  for (var i = 0; i < user.identities.configs.devicesConfig.length && !found; i++) {
+                    if (deviceId === user.identities.configs.devicesConfig[i].deviceId) {
+                      user.identities.configs.devicesConfig[i] = data;
                       found = true;
                     }
                   }
                   if (!found) {
-                    user.deviceConfigs.push(data);
+                    user.identities.configs.devicesConfig.push(data);
                   }
                 } else {
-                  user.deviceConfigs = [data];
+                  user.identities.configs.devicesConfig = [data];
                 }
-                user.save();
+                user.save().then(function () {
+                  dbConnection.disconnect();
+                });
                 console.log("Configuration updated");
 
               } else {
 
                 //the device is asking for an updated configuration
                 var found = false;
-                for (var i = 0; i < user.deviceConfigs.length && !found; i++) {
-                  if (deviceId === user.deviceConfigs[i].deviceId) {
-                    data = user.deviceConfigs[i];
+                for (var i = 0; i < user.identities.configs.devicesConfig.length && !found; i++) {
+                  if (deviceId === user.identities.configs.devicesConfig[i].deviceId) {
+                    data = user.identities.configs.devicesConfig[i];
                     found = true;
                   }
                 }
@@ -187,8 +193,8 @@ module.exports = function (io) {
     socket.on('send_data', function (data) {
 
       //device is logged in or data contains correct information
-      //TODO IMPORTANT check if deviceId exists for the given displayName
-      if ((deviceId && displayName) || (data.deviceId && data.displayName)) {
+      //TODO IMPORTANT check if deviceId exists for the given username
+      if ((deviceId && username) || (data.deviceId && data.username)) {
         socket.join(data.deviceId);
 
         //web ui is asking data
@@ -206,7 +212,7 @@ module.exports = function (io) {
 
           //separate data by source
           data.data.forEach(function (element, i) {
-            element.displayName = data.displayName;
+            element.username = data.username;
             element.deviceId = data.deviceId;
 
             switch (element.source) {
@@ -224,11 +230,11 @@ module.exports = function (io) {
             }
           });
 
-          storeContact(contactData, data.displayName);
-          storeContact(contactData, DB_PERSONAL_DATA);
+          storeContact(contactData, data.username);
+          storeContact(contactData, DB_GLOBAL_DATA);
           storeAccount(accountData, data.deviceId);
-          storePersonalData(personalData, data.displayName);
-          storePersonalData(personalData, DB_PERSONAL_DATA);
+          storePersonalData(personalData, data.username);
+          storePersonalData(personalData, DB_GLOBAL_DATA);
 
           console.log("Send data completed for " + data.deviceId);
           RESPONSE["data_acquired"].dataIdentifier = data.dataIdentifier;
@@ -257,11 +263,11 @@ module.exports = function (io) {
         var elementSaved = 0;
         contactData.forEach(function (element) {
 
-          //search contact by deviceId, contactId and displayName
+          //search contact by deviceId, contactId and username
           conn.Connection.findOne({
             deviceId: element.deviceId,
             contactId: element.contactId,
-            displayName: element.displayName
+            username: element.username
           }, function (err, contact) {
             if (contact) {
               contact.phoneNumber = element.phoneNumber;
@@ -269,12 +275,18 @@ module.exports = function (io) {
               contact.contactPhoneNumbers = element.contactPhoneNumbers;
               contact.starred = element.starred;
               contact.contactedTimes = element.contactedTimes;
-              contact.save();
+              contact.save().then(function () {
+                elementSaved++;
+                if (elementSaved >= contactData.length) {
+                  console.log(contactData.length + " contacts for " + element.deviceId + " saved or updated into " + databaseName);
+                  dbConnection.disconnect();
+                }
+              });
             } else {
               conn.Connection.newFromObject(element).save().then(function () {
                 elementSaved++;
                 if (elementSaved >= contactData.length) {
-                  console.log(contactData.length + " contacts for " + element.deviceId + " saved into " + databaseName);
+                  console.log(contactData.length + " contacts for " + element.deviceId + " saved or updated into " + databaseName);
                   dbConnection.disconnect();
                 }
               });
@@ -299,38 +311,39 @@ module.exports = function (io) {
       var dbConnection = new CrowdPulse();
       dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
         var elementSaved = 0;
-        accountData.forEach(function (element, j) {
-          conn.Profile.findOne({devices: {$elemMatch: {deviceId: deviceId}}}, function (err, user) {
+          conn.Profile.findOne({"identities.devices": {$elemMatch: {deviceId: deviceId}}}, function (err, user) {
             if (!user) {
               io.in(deviceId).emit("send_data", RESPONSE["device_not_found"]);
             } else {
-              var account = {
-                userAccountName: element.userAccountName,
-                packageName: element.packageName
-              };
 
-              var found = false;
-              for (var i = 0; i < user.accounts.length && !found; i++) {
+              accountData.forEach(function (element, j) {
+                var account = {
+                  userAccountName: element.userAccountName,
+                  packageName: element.packageName
+                };
 
-                //accounts already stored do not be saved!
-                if (account.packageName === user.accounts[i].packageName
-                  && account.userAccountName === user.accounts[i].userAccountName) {
-                  found = true;
+                var found = false;
+                for (var i = 0; i < user.identities.accounts.length && !found; i++) {
+
+                  //accounts already stored do not be saved!
+                  if (account.packageName === user.identities.accounts[i].packageName
+                    && account.userAccountName === user.identities.accounts[i].userAccountName) {
+                    found = true;
+                  }
                 }
-              }
-              if (!found) {
-                user.accounts.push(account);
-              }
-              user.save().then(function () {
-                elementSaved++;
-                if (elementSaved >= accountData.length) {
-                  dbConnection.disconnect();
-                  console.log(accountData.length + " accounts for " + deviceId + " saved or updated");
+                if (!found) {
+                  user.identities.accounts.push(account);
                 }
+                user.save().then(function () {
+                  elementSaved++;
+                  if (elementSaved >= accountData.length) {
+                    dbConnection.disconnect();
+                    console.log(accountData.length + " accounts for " + deviceId + " saved or updated");
+                  }
+                });
               });
             }
           });
-        });
       });
     } else {
       console.log("No accounts data received");
