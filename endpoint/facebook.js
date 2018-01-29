@@ -22,6 +22,7 @@ const API_LOGIN_DIALOG = 'https://www.facebook.com/v2.11/dialog/oauth';
 const API_USER_POSTS = 'https://graph.facebook.com/v2.11/me/feed';
 const API_USER_LIKES = 'https://graph.facebook.com/v2.11/me/likes?fields=name,category,created_time';
 const API_USER_DATA = 'https://graph.facebook.com/v2.11/me?fields=' + FIELDS.join(',');
+const API_USER_FRIENDS = 'https://graph.facebook.com/v2.11/me/friends';
 
 
 exports.endpoint = function() {
@@ -132,7 +133,7 @@ exports.endpoint = function() {
       try {
         var messagesToRead = req.body.messages;
 
-        // if the client do not specify a messages to read number then update the user messages
+        // if the client do not specify a messages number to read then update the user messages
         if (!messagesToRead) {
           updatePosts(req.session.username).then(function () {
             res.status(200);
@@ -167,7 +168,7 @@ exports.endpoint = function() {
       try {
         var likesNumber = req.body.likesNumber;
 
-        // if the client do not specify a messages to read number then update the user messages
+        // if the client do not specify a likes number to read then update the user likes
         if (!likesNumber) {
           updateLikes(req.session.username).then(function () {
             res.status(200);
@@ -175,7 +176,7 @@ exports.endpoint = function() {
           });
         } else {
 
-          // return the messages
+          // return the likes
           var dbConnection = new CrowdPulse();
           return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
             return conn.Like.find({source: /facebook_.*/}).sort({date: -1}).limit(likesNumber);
@@ -192,6 +193,40 @@ exports.endpoint = function() {
       }
     });
 
+  /**
+   * Get Facebook user friends (only users that use the App).
+   * Params:
+   *    friendsNumber - the number of friends to retrieve
+   */
+  router.route('/facebook/friends')
+    .post(function (req, res) {
+      try {
+        var friendsNumber = req.body.friendsNumber;
+
+        // if the client do not specify a friends number to read then update the user friends
+        if (!friendsNumber) {
+          updateFriends(req.session.username).then(function () {
+            res.status(200);
+            res.json({auth: true});
+          });
+        } else {
+
+          // return the friends
+          var dbConnection = new CrowdPulse();
+          return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
+            return conn.Connection.find({source: /facebook/}).limit(friendsNumber);
+          }).then(function (friends) {
+            dbConnection.disconnect();
+            res.status(200);
+            res.json({auth: true, friends: friends});
+          });
+        }
+
+      } catch(err) {
+        console.log(err);
+        res.sendStatus(500);
+      }
+    });
 
   /**
    * Delete Facebook information account, including posts and likes.
@@ -447,6 +482,51 @@ var updateLikes = function(username) {
   });
 };
 
+/**
+ * Update user friends.
+ * @param username
+ */
+var updateFriends = function(username) {
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+    return conn.Profile.findOne({username: username}, function (err, profile) {
+      if (profile) {
+        dbConnection.disconnect();
+
+        var facebookConfig = profile.identities.configs.facebookConfig;
+        var params = {
+          access_token: facebookConfig.accessToken,
+          limit: 1000
+        };
+
+        // retrieve friends of the current user
+        request.get({ url: API_USER_FRIENDS, qs: params, json: true }, function(err, response, friends) {
+
+          if (response.statusCode !== 200) {
+            return err;
+          }
+
+          var friendsToSave = [];
+          var i = 0;
+          while (i < friends.data.length) {
+            friendsToSave.push({
+              username: username,
+              contactId: friends.data[i].id,
+              contactName: friends.data[i].name,
+              source: 'facebook'
+            });
+            i++;
+          }
+
+          storeFriends(friendsToSave, username).then(function () {
+            storeFriends(friendsToSave, databaseName.globalData);
+          });
+
+        });
+      }
+    });
+  });
+};
 
 /**
  * Store messages in the MongoDB database
@@ -497,6 +577,40 @@ var storeLikes = function(likes, databaseName) {
 };
 
 /**
+ * Store friends in the MongoDB database
+ * @param friends
+ * @param databaseName
+ */
+var storeFriends = function(friends, databaseName) {
+  var dbConnection = new CrowdPulse();
+
+  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+    if (friends.length <= 0) {
+      return dbConnection.disconnect();
+    }
+
+    // loop function to insert friends data synchronously
+    (function loop (i) {
+      var friend = friends[i];
+      conn.Connection.findOneAndUpdate({
+        username: friend.username,
+        source: 'facebook',
+        contactId: friend.contactId
+      }, friend, {upsert: true}, function () {
+        i++;
+        if (i >= friends.length) {
+          console.log(friends.length + " Facebook friends for " + friend.username + " saved or updated into " + databaseName);
+          return dbConnection.disconnect();
+        } else {
+          loop(i);
+        }
+      });
+    })(0);
+
+  });
+};
+
+/**
  * Delete messages stored in the MongoDB database
  * @param username
  * @param databaseName
@@ -537,3 +651,4 @@ var deleteLikes = function(username, databaseName) {
 exports.updateUserProfile = updateUserProfile;
 exports.updatePosts = updatePosts;
 exports.updateLikes = updateLikes;
+exports.updateFriends = updateFriends;

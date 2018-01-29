@@ -20,6 +20,7 @@ const API_ACCESS_TOKEN = 'https://api.twitter.com/oauth/access_token';
 const API_AUTHENTICATION = 'https://api.twitter.com/oauth/authenticate';
 const API_TIMELINE = 'https://api.twitter.com/1.1/statuses/user_timeline.json';
 const API_PROFILE = 'https://api.twitter.com/1.1/users/show.json';
+const API_FRIENDS = 'https://api.twitter.com/1.1/friends/list.json';
 
 exports.endpoint = function() {
 
@@ -151,6 +152,40 @@ exports.endpoint = function() {
       }
     });
 
+  /**
+   * Get Twitter user friends (followings).
+   * Params:
+   *    friendsNumber - the number of friends to retrieve
+   */
+  router.route('/twitter/friends')
+    .post(function (req, res) {
+      try {
+        var friendsNumber = req.body.friendsNumber;
+
+        // if the client do not specify a friends number to read then update the user friends
+        if (!friendsNumber) {
+          updateFriends(req.session.username).then(function () {
+            res.status(200);
+            res.json({auth: true});
+          });
+        } else {
+
+          // return the friends
+          var dbConnection = new CrowdPulse();
+          return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
+            return conn.Connection.find({source: /twitter/}).limit(friendsNumber);
+          }).then(function (friends) {
+            dbConnection.disconnect();
+            res.status(200);
+            res.json({auth: true, friends: friends});
+          });
+        }
+
+      } catch(err) {
+        console.log(err);
+        res.sendStatus(500);
+      }
+    });
 
   /**
    * Delete Twitter information account, including tweets.
@@ -335,6 +370,74 @@ var updateTweets = function (username) {
 };
 
 /**
+ * Update user friends.
+ * @param username
+ */
+var updateFriends = function(username) {
+
+  // twitter oauth data
+  var oauth = {
+    consumer_key: CONSUMER_KEY,
+    consumer_secret: CONSUMER_SECRET,
+    token: null,
+    token_secret: null
+  };
+
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+    return conn.Profile.findOne({username: username}, function (err, profile) {
+      if (profile) {
+        dbConnection.disconnect();
+
+        var twitterConfig = profile.identities.configs.twitterConfig;
+        oauth.token = twitterConfig.oauthToken;
+        oauth.token_secret = twitterConfig.oauthTokenSecret;
+
+        // request params, cursor -1 is used to retrieve the first results page
+        var params = {
+          count: 200,
+          cursor: -1
+        };
+
+        var friendsToSave = [];
+
+        // retrieve friends of the current user, iterate over all results page using cursor
+        (function loop (params) {
+          request.get({ url: API_FRIENDS, oauth: oauth, qs: params, json: true}, function(err, response, friends) {
+
+            if (response.statusCode !== 200) {
+              return err;
+            }
+            console.log(friends.next_cursor);
+            var i = 0;
+            while (i < friends.users.length) {
+              friendsToSave.push({
+                username: username,
+                contactId: friends.users[i].id_str,
+                contactName: friends.users[i].name,
+                source: 'twitter'
+              });
+              i++;
+            }
+
+            // break condition
+            if (friends.next_cursor !== 0) {
+              params.cursor = friends.next_cursor;
+              loop(params);
+            } else {
+              storeFriends(friendsToSave, username).then(function () {
+                storeFriends(friendsToSave, databaseName.globalData);
+              });
+            }
+
+          });
+        })(params);
+      }
+    });
+  });
+};
+
+/**
  * Store messages in the MongoDB database
  * @param messages
  * @param databaseName
@@ -359,6 +462,40 @@ var storeMessages = function(messages, databaseName) {
 };
 
 /**
+ * Store friends in the MongoDB database
+ * @param friends
+ * @param databaseName
+ */
+var storeFriends = function(friends, databaseName) {
+  var dbConnection = new CrowdPulse();
+
+  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+    if (friends.length <= 0) {
+      return dbConnection.disconnect();
+    }
+
+    // loop function to insert friends data synchronously
+    (function loop (i) {
+      var friend = friends[i];
+      conn.Connection.findOneAndUpdate({
+        username: friend.username,
+        source: 'twitter',
+        contactId: friend.contactId
+      }, friend, {upsert: true}, function () {
+        i++;
+        if (i >= friends.length) {
+          console.log(friends.length + " Twitter friends for " + friend.username + " saved or updated into " + databaseName);
+          return dbConnection.disconnect();
+        } else {
+          loop(i);
+        }
+      });
+    })(0);
+
+  });
+};
+
+/**
  * Delete messages stored in the MongoDB database
  * @param username
  * @param databaseName
@@ -379,3 +516,4 @@ var deleteMessages = function(username, databaseName) {
 
 exports.updateUserProfile = updateUserProfile;
 exports.updateTweets = updateTweets;
+exports.updateFriends = updateFriends;
