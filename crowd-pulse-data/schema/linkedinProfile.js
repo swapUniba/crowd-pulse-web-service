@@ -8,6 +8,7 @@ var LinkedInProfileSchema = {
   firstName: String,
   lastName: String,
   emailAddress: String,
+  headline: String,
   pictureUrl: String,
   location : String,
   industry : String,

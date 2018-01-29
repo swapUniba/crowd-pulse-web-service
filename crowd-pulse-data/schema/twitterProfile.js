@@ -14,12 +14,9 @@ var TwitterProfileSchema = {
   friends_count: Number,
   created_at: Date,
   favourites_count: Number,
-  geo_enabled: Boolean,
-  verified: Boolean,
   statuses_count: Number,
-  profile_image_url: String
-
-  // TODO add more here
+  profile_image_url: String,
+  lang: String
 };
 
 module.exports = TwitterProfileSchema;

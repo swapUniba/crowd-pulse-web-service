@@ -12,17 +12,15 @@ const DB_PROFILES = databaseName.profiles;
 const CLIENT_SECRET = '7ce264e7a782298475830477d9442bc6';
 const CLIENT_ID = '637963103055683';
 
-const FIELDS = ['id', 'email', 'first_name', 'last_name', 'link', 'name', 'about', 'age_range', 'birthday',
-  'education', 'favorite_athletes', 'favorite_teams', 'gender', 'hometown', 'inspirational_people',
-  'interested_in','languages', 'meeting_for', 'political', 'quotes', 'relationship_status', 'religion',
-  'sports', 'website', 'work'];
+const FIELDS = ['id', 'email', 'first_name', 'last_name', 'middle_name', 'link', 'name', 'age_range', 'gender',
+  'languages', 'quotes'];
 
 const PERMISSIONS = ['email', 'public_profile', 'user_friends', 'user_likes', 'user_posts'];
 
 const API_ACCESS_TOKEN = 'https://graph.facebook.com/v2.11/oauth/access_token';
 const API_LOGIN_DIALOG = 'https://www.facebook.com/v2.11/dialog/oauth';
 const API_USER_POSTS = 'https://graph.facebook.com/v2.11/me/feed';
-const API_USER_LIKES = 'https://graph.facebook.com/v2.11/me/likes';
+const API_USER_LIKES = 'https://graph.facebook.com/v2.11/me/likes?fields=name,category,created_time';
 const API_USER_DATA = 'https://graph.facebook.com/v2.11/me?fields=' + FIELDS.join(',');
 
 
@@ -402,9 +400,12 @@ var updateLikes = function(username) {
 
           var likesToSave = [];
           var i = 0;
+
+          // check if there are other likes already stored
           if (!facebookConfig.lastLikeId) {
             facebookConfig.lastLikeId = 0;
           }
+
           while (i < likes.data.length) {
             var likeDate = new Date(likes.data[i].created_time);
             if (likeDate.getTime() <= facebookConfig.lastLikeId) {
@@ -413,6 +414,7 @@ var updateLikes = function(username) {
             likesToSave.push({
               oId: likes.data[i].id,
               name: likes.data[i].name,
+              category: likes.data[i].category,
               source: 'facebook_' + facebookConfig.facebookId,
               fromUser: facebookConfig.facebookId,
               date: likeDate

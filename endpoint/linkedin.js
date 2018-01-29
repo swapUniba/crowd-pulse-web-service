@@ -14,7 +14,7 @@ const PERMISSION = ['r_basicprofile', 'r_emailaddress', 'rw_company_admin', 'w_s
 
 const API_LOGIN_DIALOG = 'https://www.linkedin.com/oauth/v2/authorization';
 const API_ACCESS_TOKEN =  'https://www.linkedin.com/oauth/v2/accessToken';
-const API_PEOPLE = 'https://api.linkedin.com/v1/people/~:(id,first-name,last-name,email-address,picture-url,location,' +
+const API_PEOPLE = 'https://api.linkedin.com/v1/people/~:(id,first-name,last-name,headline,email-address,picture-url,location,' +
   'industry,num-connections,summary,specialties,positions,associations,interests,patents,skills,certifications,' +
   'educations,courses,volunteer,num-recommenders,following,date-of-birth,honors-awards)';
 

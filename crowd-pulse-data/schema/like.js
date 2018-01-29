@@ -11,6 +11,7 @@ var LikeSchema = builder(schemas.like, {
   source: String,
   fromUser: String,
   name: String,
+  category: String,
   date: Date
 });
 
