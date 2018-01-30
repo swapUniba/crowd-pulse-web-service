@@ -235,6 +235,8 @@ exports.endpoint = function() {
               var twitterUsername = profile.identities.twitter.screen_name;
               deleteMessages(twitterUsername, req.session.username);
               deleteMessages(twitterUsername, DB_GLOBAL_DATA);
+              deleteFriends(req.session.username, req.session.username);
+              deleteFriends(req.session.username, databaseName.globalData);
 
               profile.identities.twitter = undefined;
               profile.identities.configs.twitterConfig = undefined;
@@ -545,6 +547,25 @@ var deleteMessages = function(username, databaseName) {
         console.log(err);
       } else {
         console.log("Twitter messages deleted from " + databaseName + " at " + new Date());
+      }
+      return dbConnection.disconnect();
+    });
+  });
+};
+
+/**
+ * Delete friends stored in the MongoDB database
+ * @param username
+ * @param databaseName
+ */
+var deleteFriends = function(username, databaseName) {
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+    return conn.Connection.deleteMany({username: username, source: /twitter.*/}, function (err) {
+      if (err) {
+        console.log(err);
+      } else {
+        console.log("Twitter friends deleted from " + databaseName + " at " + new Date());
       }
       return dbConnection.disconnect();
     });

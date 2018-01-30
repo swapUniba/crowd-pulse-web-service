@@ -52,18 +52,21 @@ var ProfileSchema = builder(schemas.profile, {
         accessToken: String,
         expiresIn: Number,
         lastPostId: String,
-        lastLikeId: String
+        lastLikeId: String,
+        share: Boolean
       },
       twitterConfig: {
         twitterId: String,
         oauthToken: String,
         oauthTokenSecret: String,
-        lastTweetId: String
+        lastTweetId: String,
+        share: Boolean
       },
       linkedInConfig: {
         linkedInId: String,
         accessToken: String,
-        expiresIn: Number
+        expiresIn: Number,
+        share: Boolean
       },
       devicesConfig: [
         {

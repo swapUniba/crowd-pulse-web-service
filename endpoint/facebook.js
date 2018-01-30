@@ -279,6 +279,8 @@ exports.endpoint = function() {
               deleteMessages(facebookId, databaseName.globalData);
               deleteLikes(facebookId, req.session.username);
               deleteLikes(facebookId, databaseName.globalData);
+              deleteFriends(req.session.username, req.session.username);
+              deleteFriends(req.session.username, databaseName.globalData);
 
               profile.identities.facebook = undefined;
               profile.identities.configs.facebookConfig = undefined;
@@ -682,6 +684,26 @@ var deleteLikes = function(username, databaseName) {
     });
   });
 };
+
+/**
+ * Delete friends stored in the MongoDB database
+ * @param username
+ * @param databaseName
+ */
+var deleteFriends = function(username, databaseName) {
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+    return conn.Connection.deleteMany({username: username, source: /facebook.*/}, function (err) {
+      if (err) {
+        console.log(err);
+      } else {
+        console.log("Facebook friends deleted from " + databaseName + " at " + new Date());
+      }
+      return dbConnection.disconnect();
+    });
+  });
+};
+
 
 exports.updateUserProfile = updateUserProfile;
 exports.updatePosts = updatePosts;
