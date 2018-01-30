@@ -117,6 +117,40 @@ exports.endpoint = function() {
       }
     });
 
+  /**
+   * Update Twitter configuration reading parameters from query.
+   */
+  router.route('/twitter/config')
+    .get(function (req, res) {
+      try {
+        var params = req.query;
+        var dbConnection = new CrowdPulse();
+        return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+          return conn.Profile.findOne({username: req.session.username}, function (err, user) {
+            if (user) {
+
+              // update share option
+              if (params.share) {
+                user.identities.configs.twitterConfig.share = params.share;
+              }
+              user.save();
+
+              res.status(200);
+              res.json({auth: true});
+
+            } else {
+              res.sendStatus(404);
+            }
+          });
+        }).then(function () {
+          dbConnection.disconnect();
+        });
+
+      } catch(err) {
+        console.log(err);
+        res.sendStatus(500);
+      }
+    });
 
   /**
    * Gets the user timeline.
@@ -396,6 +430,7 @@ var updateFriends = function(username) {
         // request params, cursor -1 is used to retrieve the first results page
         var params = {
           count: 200,
+          include_user_entities: false,
           cursor: -1
         };
 
@@ -408,7 +443,6 @@ var updateFriends = function(username) {
             if (response.statusCode !== 200) {
               return err;
             }
-            console.log(friends.next_cursor);
             var i = 0;
             while (i < friends.users.length) {
               friendsToSave.push({
@@ -421,8 +455,11 @@ var updateFriends = function(username) {
             }
 
             // break condition
-            if (friends.next_cursor !== 0) {
-              params.cursor = friends.next_cursor;
+            if (friends.next_cursor_str !== '0') {
+
+              // update cursor
+              params.cursor = friends.next_cursor_str;
+
               loop(params);
             } else {
               storeFriends(friendsToSave, username).then(function () {

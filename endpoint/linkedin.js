@@ -115,6 +115,40 @@ exports.endpoint = function() {
 
     });
 
+  /**
+   * Update LinkedIn configuration reading parameters from query.
+   */
+  router.route('/linkedin/config')
+    .get(function (req, res) {
+      try {
+        var params = req.query;
+        var dbConnection = new CrowdPulse();
+        return dbConnection.connect(config.database.url, databaseName.profiles).then(function (conn) {
+          return conn.Profile.findOne({username: req.session.username}, function (err, user) {
+            if (user) {
+
+              // update share option
+              if (params.share) {
+                user.identities.configs.linkedInConfig.share = params.share;
+              }
+              user.save();
+
+              res.status(200);
+              res.json({auth: true});
+
+            } else {
+              res.sendStatus(404);
+            }
+          });
+        }).then(function () {
+          dbConnection.disconnect();
+        });
+
+      } catch(err) {
+        console.log(err);
+        res.sendStatus(500);
+      }
+    });
 
   /**
    * Delete LinkedIn information account.

@@ -124,6 +124,41 @@ exports.endpoint = function() {
     });
 
   /**
+   * Update Facebook configuration reading parameters from query.
+   */
+  router.route('/facebook/config')
+    .get(function (req, res) {
+      try {
+        var params = req.query;
+        var dbConnection = new CrowdPulse();
+        return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+          return conn.Profile.findOne({username: req.session.username}, function (err, user) {
+            if (user) {
+
+              // update share option
+              if (params.share) {
+                user.identities.configs.facebookConfig.share = params.share;
+              }
+              user.save();
+
+              res.status(200);
+              res.json({auth: true});
+
+            } else {
+              res.sendStatus(404);
+            }
+          });
+        }).then(function () {
+          dbConnection.disconnect();
+        });
+
+      } catch(err) {
+        console.log(err);
+        res.sendStatus(500);
+      }
+    });
+
+  /**
    * Get Facebook user posts.
    * Params:
    *    messages - the number of messages to retrieve
