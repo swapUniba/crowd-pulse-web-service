@@ -6,7 +6,7 @@
   },
   "crowd-pulse": {
     "main": "/opt/crowd-pulse/build/install/crowd-pulse/bin/crowd-pulse",
-    "standardPipeline": ""
+    "projects": ["standardPipeline"]
   },
   "logs": {
     "path": "/opt/crowd-pulse/logs"
@@ -15,6 +15,6 @@
     "secret": "secret-test-to-change-to-more-security"
   },
   "batch": {
-    "timeout": ""
+    "timeout": "0 0 * * *"
   }
 }

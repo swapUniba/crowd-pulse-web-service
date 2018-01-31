@@ -17,6 +17,7 @@
     "cors": "^2.7.1",
     "ejs": "^2.3.3",
     "express": "^4.10.4",
+    "express-rate-limit": "^2.11.0",
     "express-session": "^1.11.3",
     "jsonwebtoken": "^8.1.0",
     "kerberos": "0.0.17",

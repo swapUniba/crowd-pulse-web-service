@@ -8,6 +8,7 @@ var CrowdPulse = require('./../crowd-pulse-data');
 var databaseName = require('./../crowd-pulse-data/databaseName');
 var config = require('./../lib/config');
 var TwitterProfileSchema = require('./../crowd-pulse-data/schema/twitterProfile');
+var batch = require('./../lib/batchOperations');
 
 const DB_PROFILES = databaseName.profiles;
 const DB_GLOBAL_DATA = databaseName.globalData;
@@ -387,8 +388,8 @@ var updateTweets = function (username) {
 
                 // create new db connection to save last tweet id in the user profile config
                 dbConnection = new CrowdPulse();
-                return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
-                  return conn.Profile.findOne({username: username}, function (err, profile) {
+                dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+                  conn.Profile.findOne({username: username}, function (err, profile) {
                     if (profile) {
                       profile.identities.configs.twitterConfig.lastTweetId = messages[0].oId;
                       profile.save().then(function () {
@@ -397,6 +398,14 @@ var updateTweets = function (username) {
                     }
                   });
                 });
+
+                // run CrowdPulse
+                var projects = config['crowd-pulse'].projects;
+                if (projects && projects.length) {
+                  projects.forEach(function (project) {
+                    batch.runCrowdPulse(project, username);
+                  });
+                }
               }
             });
           });

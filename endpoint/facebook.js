@@ -7,6 +7,7 @@ var CrowdPulse = require('./../crowd-pulse-data');
 var databaseName = require('./../crowd-pulse-data/databaseName');
 var config = require('./../lib/config');
 var FacebookProfileSchema = require('./../crowd-pulse-data/schema/facebookProfile');
+var batch = require('./../lib/batchOperations');
 
 const DB_PROFILES = databaseName.profiles;
 const CLIENT_SECRET = '7ce264e7a782298475830477d9442bc6';
@@ -427,8 +428,8 @@ var updatePosts = function(username) {
 
                 // create new db connection to save last post timestamp in the user profile config
                 dbConnection = new CrowdPulse();
-                return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
-                  return conn.Profile.findOne({username: username}, function (err, profile) {
+                dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+                  conn.Profile.findOne({username: username}, function (err, profile) {
                     if (profile) {
                       profile.identities.configs.facebookConfig.lastPostId = messages[0].date.getTime() / 1000;
                       profile.save().then(function () {
@@ -437,6 +438,14 @@ var updatePosts = function(username) {
                     }
                   });
                 });
+
+                // run CrowdPulse
+                var projects = config['crowd-pulse'].projects;
+                if (projects && projects.length) {
+                  projects.forEach(function (project) {
+                    batch.runCrowdPulse(project, username);
+                  });
+                }
               }
             });
           });
