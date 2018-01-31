@@ -20,7 +20,8 @@ const API_ACCESS_TOKEN = 'https://api.twitter.com/oauth/access_token';
 const API_AUTHENTICATION = 'https://api.twitter.com/oauth/authenticate';
 const API_TIMELINE = 'https://api.twitter.com/1.1/statuses/user_timeline.json';
 const API_PROFILE = 'https://api.twitter.com/1.1/users/show.json';
-const API_FRIENDS = 'https://api.twitter.com/1.1/friends/list.json';
+const API_FOLLOWINGS = 'https://api.twitter.com/1.1/friends/list.json';
+const API_FOLLOWERS = 'https://api.twitter.com/1.1/followers/list.json';
 
 exports.endpoint = function() {
 
@@ -438,9 +439,9 @@ var updateFriends = function(username) {
 
         var friendsToSave = [];
 
-        // retrieve friends of the current user, iterate over all results page using cursor
-        (function loop (params) {
-          request.get({ url: API_FRIENDS, oauth: oauth, qs: params, json: true}, function(err, response, friends) {
+        // retrieve connection of the current user, iterate over all results page using cursor
+        (function loop (params, api) {
+          request.get({ url: api, oauth: oauth, qs: params, json: true}, function(err, response, friends) {
 
             if (response.statusCode !== 200) {
               return err;
@@ -451,7 +452,8 @@ var updateFriends = function(username) {
                 username: username,
                 contactId: friends.users[i].id_str,
                 contactName: friends.users[i].name,
-                source: 'twitter'
+                source: 'twitter',
+                type: api === API_FOLLOWINGS? 'following': 'followers'
               });
               i++;
             }
@@ -461,16 +463,24 @@ var updateFriends = function(username) {
 
               // update cursor
               params.cursor = friends.next_cursor_str;
+              loop(params, api);
 
-              loop(params);
+            } else if (api === API_FOLLOWINGS) {
+
+              // extract followers, reset cursor
+              params.cursor = -1;
+              loop(params, API_FOLLOWERS);
+
             } else {
+
+              // finally store all connection (followings and followers)
               storeFriends(friendsToSave, username).then(function () {
                 storeFriends(friendsToSave, databaseName.globalData);
               });
             }
 
           });
-        })(params);
+        })(params, API_FOLLOWINGS);
       }
     });
   });
@@ -519,7 +529,8 @@ var storeFriends = function(friends, databaseName) {
       conn.Connection.findOneAndUpdate({
         username: friend.username,
         source: 'twitter',
-        contactId: friend.contactId
+        contactId: friend.contactId,
+        type: friend.type
       }, friend, {upsert: true}, function () {
         i++;
         if (i >= friends.length) {
