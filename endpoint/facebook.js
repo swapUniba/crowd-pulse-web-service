@@ -424,7 +424,9 @@ var updatePosts = function(username) {
 
           storeMessages(messages, username).then(function () {
             storeMessages(messages, databaseName.globalData).then(function () {
-              if (messages[0]) {
+
+              // if new messages are saved
+              if (messages.length > 0) {
 
                 // create new db connection to save last post timestamp in the user profile config
                 dbConnection = new CrowdPulse();
@@ -441,11 +443,20 @@ var updatePosts = function(username) {
 
                 // run CrowdPulse
                 var projects = config['crowd-pulse'].projects;
-                if (projects && projects.length) {
-                  projects.forEach(function (project) {
-                    batch.runCrowdPulse(project, username);
-                  });
+                if (projects && projects.length > 0) {
+
+                  // loop projects with a delay between each run
+                  (function loopWithDelay(i) {
+                    setTimeout(function () {
+                      batch.runCrowdPulse(projects[i], username);
+
+                      if (i--) {
+                        loopWithDelay(i);
+                      }
+                    }, 60000);
+                  })(projects.length - 1);
                 }
+
               }
             });
           });
@@ -505,7 +516,9 @@ var updateLikes = function(username) {
 
           storeLikes(likesToSave, username).then(function () {
             storeLikes(likesToSave, databaseName.globalData).then(function () {
-              if (likesToSave[0]) {
+
+              // if new likes are saved
+              if (likesToSave.length > 0) {
 
                 // create new db connection to save last like timestamp in the user profile config
                 dbConnection = new CrowdPulse();

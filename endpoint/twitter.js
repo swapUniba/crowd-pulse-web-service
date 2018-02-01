@@ -384,7 +384,9 @@ var updateTweets = function (username) {
 
           storeMessages(messages, DB_GLOBAL_DATA).then(function () {
             storeMessages(messages, username).then(function () {
-              if (messages[0]) {
+
+              // if new messages are saved
+              if (messages.length > 0) {
 
                 // create new db connection to save last tweet id in the user profile config
                 dbConnection = new CrowdPulse();
@@ -401,11 +403,20 @@ var updateTweets = function (username) {
 
                 // run CrowdPulse
                 var projects = config['crowd-pulse'].projects;
-                if (projects && projects.length) {
-                  projects.forEach(function (project) {
-                    batch.runCrowdPulse(project, username);
-                  });
+                if (projects && projects.length > 0) {
+
+                  // loop projects with a delay between each run
+                  (function loopWithDelay(i) {
+                    setTimeout(function () {
+                      batch.runCrowdPulse(projects[i], username);
+
+                      if (i--) {
+                        loopWithDelay(i);
+                      }
+                    }, 60000);
+                  })(projects.length - 1);
                 }
+
               }
             });
           });
