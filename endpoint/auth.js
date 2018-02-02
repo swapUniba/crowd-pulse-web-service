@@ -8,8 +8,6 @@ var bcrypt = require('bcryptjs');
 
 const DB_PROFILES = "profiles";
 
-const TOKEN_EXPIRE = 432000; // five days
-
 module.exports = function() {
 
   /**
@@ -40,7 +38,7 @@ module.exports = function() {
                   });
                 } else {
                   var token = jwt.sign({email: user.email, username: user.username},
-                    config.session.secret, {expiresIn: TOKEN_EXPIRE});
+                    config.session.secret);
                   res.send({
                     auth: true,
                     token: token,
@@ -98,7 +96,7 @@ module.exports = function() {
                   };
                   conn.Profile.newFromObject(user).save().then(function () {
                     var token = jwt.sign({email: user.email, username: user.username},
-                      config.session.secret, {expiresIn: TOKEN_EXPIRE});
+                      config.session.secret);
                     res.send({
                       auth: true,
                       token: token
