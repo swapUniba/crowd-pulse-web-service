@@ -37,12 +37,19 @@ module.exports = function() {
                     message: "Invalid email and/or password."
                   });
                 } else {
-                  var token = jwt.sign({email: user.email, username: user.username},
-                    config.session.secret);
+
+                  // access token
+                  var token = jwt.sign({
+                    email: user.email,
+                    username: user.username,
+                    developer: !!user.applicationDescription
+                  }, config.session.secret);
+
                   res.send({
                     auth: true,
                     token: token,
-                    username: user.username
+                    username: user.username,
+                    developer: !!user.applicationDescription
                   });
                 }
               });
@@ -58,11 +65,12 @@ module.exports = function() {
     });
 
   /**
-   * Register a new user.
+   * Register a new user (or developer).
    * Params:
    *    username - the username
    *    email - the user email
    *    password - the user password
+   *    applicationDescription - developer application description (if any)
    */
   router.route('/signup')
     .post(function (req, res) {
@@ -85,29 +93,41 @@ module.exports = function() {
                     message: 'Username is already taken'
                   });
                 } else {
-
                   // encrypt password
                   var salt = bcrypt.genSaltSync(10);
                   var encryptedPassword = bcrypt.hashSync(req.body.password, salt);
+
                   var user = {
                     email: req.body.email,
                     username: req.body.username,
-                    password: encryptedPassword
+                    password: encryptedPassword,
+                    applicationDescription: req.body.applicationDescription
                   };
+
+                  // access token
+                  var token = jwt.sign({
+                    email: user.email,
+                    username: user.username,
+                    developer: !!user.applicationDescription
+                  }, config.session.secret);
+
+                  // save the first generated accessToken for developers
+                  if (user.applicationDescription) {
+                    user.accessToken = token;
+                  }
+
                   conn.Profile.newFromObject(user).save().then(function () {
-                    var token = jwt.sign({email: user.email, username: user.username},
-                      config.session.secret);
+                    dbConn.disconnect();
                     res.send({
                       auth: true,
-                      token: token
+                      token: token,
+                      developer: !!user.applicationDescription
                     });
                   });
                 }
               });
             }
           });
-        }).finally(function () {
-          dbConn.disconnect();
         });
       } catch(err) {
         console.log(err);

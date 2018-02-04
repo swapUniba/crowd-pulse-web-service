@@ -17,6 +17,8 @@ var ProfileSchema = builder(schemas.profile, {
   displayName: String,
   password: String,
   username: String,
+  applicationDescription: String,
+  accessToken: String,
   pictureUrl: String,
   customTags: [String],
   activationDate: Date,
