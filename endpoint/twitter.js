@@ -370,7 +370,7 @@ var updateTweets = function (username) {
         if (tweets && tweets.length > 0) {
           var messages = [];
           tweets.forEach(function (tweet) {
-            messages.push({
+            var tweetToSave = {
               oId: tweet.id_str,
               text: tweet.text,
               source: 'twitter_' + tweet.user.id,
@@ -378,8 +378,35 @@ var updateTweets = function (username) {
               date: new Date(tweet.created_at),
               language: tweet.lang,
               favs: tweet.favorite_count,
-              shares: tweet.shares_count
-            });
+              shares: tweet.shares_count,
+              toUsers: tweet.in_reply_to_screen_name,
+              parent: tweet.in_reply_to_status_id
+            };
+
+            if (tweet.coordinates) {
+
+              // if there are exacts coordinates
+              tweetToSave.latitude = tweet.coordinates.coordinates[1];
+              tweetToSave.longitude = tweet.coordinates.coordinates[0];
+
+            } else if (tweet.place && tweet.place.bounding_box && tweet.place.bounding_box.coordinates) {
+
+              // retrieve coordinates from the place (if any), reading the first coordinates of place bounding box
+              tweetToSave.latitude = tweet.place.bounding_box.coordinates[0][0][1];
+              tweetToSave.longitude = tweet.place.bounding_box.coordinates[0][0][0];
+
+            }
+
+            // get other users mention in the tweet
+            if (tweet.entities && tweet.entities.user_mentions.length) {
+              var mentions = [];
+              tweet.entities.user_mentions.forEach(function (mention) {
+                mentions.push(mention.screen_name);
+              });
+              tweetToSave.refUsers = mentions;
+            }
+
+            messages.push(tweetToSave);
           });
 
           storeMessages(messages, DB_GLOBAL_DATA).then(function () {
