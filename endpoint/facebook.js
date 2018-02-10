@@ -136,10 +136,28 @@ exports.endpoint = function() {
           return conn.Profile.findOne({username: req.session.username}, function (err, user) {
             if (user) {
 
-              // update share option
-              if (params.share) {
-                user.identities.configs.facebookConfig.share = params.share;
+              if (params.shareProfile !== null && params.shareProfile !== undefined) {
+                user.identities.configs.facebookConfig.shareProfile = params.shareProfile;
               }
+
+              if (params.shareMessages !== null && params.shareMessages !== undefined) {
+                user.identities.configs.facebookConfig.shareMessages = params.shareMessages;
+                updateShareMessages(user.identities.configs.facebookConfig.facebookId, req.session.username, params.shareMessages);
+                updateShareMessages(user.identities.configs.facebookConfig.facebookId, databaseName.globalData, params.shareMessages);
+              }
+
+              if (params.shareFriends !== null && params.shareFriends !== undefined) {
+                user.identities.configs.facebookConfig.shareFriends = params.shareFriends;
+                updateShareFriends(req.session.username, req.session.username, params.shareFriends);
+                updateShareFriends(req.session.username, databaseName.globalData, params.shareFriends);
+              }
+
+              if (params.shareLikes !== null && params.shareLikes !== undefined) {
+                user.identities.configs.facebookConfig.shareLikes = params.shareLikes;
+                updateShareLikes(user.identities.configs.facebookConfig.facebookId, req.session.username, params.shareLikes);
+                updateShareLikes(user.identities.configs.facebookConfig.facebookId, databaseName.globalData, params.shareLikes);
+              }
+
               user.save();
 
               res.status(200);
@@ -336,6 +354,12 @@ var updateUserProfile = function(username, callback) {
           profile.identities.facebook.facebookId = userData.id;
           profile.identities.configs.facebookConfig.facebookId = userData.id;
 
+          // share default value
+          facebookConfig.shareFriends = true;
+          facebookConfig.shareMessages = true;
+          facebookConfig.shareProfile = true;
+          facebookConfig.shareLikes = true;
+
           // save other Facebook data
           for (var key in FacebookProfileSchema) {
             if (FacebookProfileSchema.hasOwnProperty(key) && userData[key]) {
@@ -395,6 +419,8 @@ var updatePosts = function(username) {
           limit: 1000
         };
 
+        var share = facebookConfig.shareMessages;
+
         // retrieve posts of the current user
         request.get({ url: API_USER_POSTS, qs: params, json: true }, function(err, response, posts) {
 
@@ -418,7 +444,8 @@ var updatePosts = function(username) {
               date: new Date(post.created_time),
               story: post.story,
               shares: post.shares,
-              toUsers: toUsers
+              toUsers: toUsers,
+              share: share
             });
           });
 
@@ -509,7 +536,8 @@ var updateLikes = function(username) {
               category: likes.data[i].category,
               source: 'facebook_' + facebookConfig.facebookId,
               fromUser: facebookConfig.facebookId,
-              date: likeDate
+              date: likeDate,
+              share: facebookConfig.shareLikes
             });
             i++;
           }
@@ -558,6 +586,8 @@ var updateFriends = function(username) {
           limit: 1000
         };
 
+        var share = facebookConfig.shareFriends;
+
         // retrieve friends of the current user
         request.get({ url: API_USER_FRIENDS, qs: params, json: true }, function(err, response, friends) {
 
@@ -572,7 +602,8 @@ var updateFriends = function(username) {
               username: username,
               contactId: friends.data[i].id,
               contactName: friends.data[i].name,
-              source: 'facebook'
+              source: 'facebook',
+              share: share
             });
             i++;
           }
@@ -725,6 +756,71 @@ var deleteFriends = function(username, databaseName) {
     });
   });
 };
+
+
+/**
+ * Update share option for messages.
+ * @param userId
+ * @param databaseName
+ * @param share
+ */
+var updateShareMessages = function (userId, databaseName, share) {
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+    return conn.Message.update({source: 'facebook_' + userId}, {$set: {share: share}}, {multi: true},
+      function (err, numAffected) {
+        if (err) {
+          console.log(err);
+        } else {
+          console.log(numAffected.nModified + " Facebook messages updated for " + databaseName + " at " + new Date());
+        }
+        return dbConnection.disconnect();
+      });
+  });
+};
+
+/**
+ * Update share option for friends.
+ * @param username
+ * @param databaseName
+ * @param share
+ */
+var updateShareFriends = function (username, databaseName, share) {
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+    return conn.Connection.update({username: username, source: 'facebook'}, {$set: {share: share}}, {multi: true},
+      function (err, numAffected) {
+        if (err) {
+          console.log(err);
+        } else {
+          console.log(numAffected.nModified + " Facebook friends updated for " + databaseName + " at " + new Date());
+        }
+        return dbConnection.disconnect();
+      });
+  });
+};
+
+/**
+ * Update share option for likes.
+ * @param userId
+ * @param databaseName
+ * @param share
+ */
+var updateShareLikes = function (userId, databaseName, share) {
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+    return conn.Like.update({source: 'facebook_' + userId}, {$set: {share: share}}, {multi: true},
+      function (err, numAffected) {
+        if (err) {
+          console.log(err);
+        } else {
+          console.log(numAffected.nModified + " Facebook likes updated for " + databaseName + " at " + new Date());
+        }
+        return dbConnection.disconnect();
+      });
+  });
+};
+
 
 
 exports.updateUserProfile = updateUserProfile;

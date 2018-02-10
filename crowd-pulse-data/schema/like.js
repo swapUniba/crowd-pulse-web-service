@@ -12,7 +12,8 @@ var LikeSchema = builder(schemas.like, {
   fromUser: String,
   name: String,
   category: String,
-  date: Date
+  date: Date,
+  share: Boolean
 });
 
 LikeSchema.statics.newFromObject = function(object) {

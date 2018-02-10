@@ -55,20 +55,25 @@ var ProfileSchema = builder(schemas.profile, {
         expiresIn: Number,
         lastPostId: String,
         lastLikeId: String,
-        share: Boolean
+        shareProfile: Boolean,
+        shareMessages: Boolean,
+        shareFriends: Boolean,
+        shareLikes: Boolean
       },
       twitterConfig: {
         twitterId: String,
         oauthToken: String,
         oauthTokenSecret: String,
         lastTweetId: String,
-        share: Boolean
+        shareProfile: Boolean,
+        shareMessages: Boolean,
+        shareFriends: Boolean
       },
       linkedInConfig: {
         linkedInId: String,
         accessToken: String,
         expiresIn: Number,
-        share: Boolean
+        shareProfile: Boolean
       },
       devicesConfig: [
         {

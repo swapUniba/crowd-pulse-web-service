@@ -131,10 +131,22 @@ exports.endpoint = function() {
           return conn.Profile.findOne({username: req.session.username}, function (err, user) {
             if (user) {
 
-              // update share option
-              if (params.share) {
-                user.identities.configs.twitterConfig.share = params.share;
+              if (params.shareProfile !== null && params.shareProfile !== undefined) {
+                user.identities.configs.twitterConfig.shareProfile = params.shareProfile;
               }
+
+              if (params.shareMessages !== null && params.shareMessages !== undefined) {
+                user.identities.configs.twitterConfig.shareMessages = params.shareMessages;
+                updateShareMessages(user.identities.configs.twitterConfig.twitterId, req.session.username, params.shareMessages);
+                updateShareMessages(user.identities.configs.twitterConfig.twitterId, DB_GLOBAL_DATA, params.shareMessages);
+              }
+
+              if (params.shareFriends !== null && params.shareFriends !== undefined) {
+                user.identities.configs.twitterConfig.shareFriends = params.shareFriends;
+                updateShareFriends(req.session.username, req.session.username, params.shareFriends);
+                updateShareFriends(req.session.username, DB_GLOBAL_DATA, params.shareFriends);
+              }
+
               user.save();
 
               res.status(200);
@@ -308,6 +320,11 @@ var updateUserProfile = function(username, callback) {
           profile.identities.twitter.twitterId = userData.id;
         }
 
+        // share default value
+        profile.identities.configs.twitterConfig.shareFriends = true;
+        profile.identities.configs.twitterConfig.shareMessages = true;
+        profile.identities.configs.twitterConfig.shareProfile = true;
+
         // save other returned data
         for (var key in TwitterProfileSchema) {
           if (TwitterProfileSchema.hasOwnProperty(key) && userData[key]) {
@@ -365,6 +382,8 @@ var updateTweets = function (username) {
       oauth.token_secret = twitterConfig.oauthTokenSecret;
       params.since_id = twitterConfig.lastTweetId;
 
+      var share = twitterConfig.shareMessages;
+
       // request timeline
       request.get({url: API_TIMELINE, oauth: oauth, qs: params, json: true}, function (error, response, tweets) {
         if (tweets && tweets.length > 0) {
@@ -380,7 +399,8 @@ var updateTweets = function (username) {
               favs: tweet.favorite_count,
               shares: tweet.shares_count,
               toUsers: tweet.in_reply_to_screen_name,
-              parent: tweet.in_reply_to_status_id
+              parent: tweet.in_reply_to_status_id,
+              share: share
             };
 
             if (tweet.coordinates) {
@@ -394,7 +414,6 @@ var updateTweets = function (username) {
               // retrieve coordinates from the place (if any), reading the first coordinates of place bounding box
               tweetToSave.latitude = tweet.place.bounding_box.coordinates[0][0][1];
               tweetToSave.longitude = tweet.place.bounding_box.coordinates[0][0][0];
-
             }
 
             // get other users mention in the tweet
@@ -477,6 +496,8 @@ var updateFriends = function(username) {
         oauth.token = twitterConfig.oauthToken;
         oauth.token_secret = twitterConfig.oauthTokenSecret;
 
+        var share = twitterConfig.shareFriends;
+
         // request params, cursor -1 is used to retrieve the first results page
         var params = {
           count: 200,
@@ -500,7 +521,8 @@ var updateFriends = function(username) {
                 contactId: friends.users[i].id_str,
                 contactName: friends.users[i].name,
                 source: 'twitter',
-                type: api === API_FOLLOWINGS? 'following': 'followers'
+                type: api === API_FOLLOWINGS? 'following': 'followers',
+                share: share
               });
               i++;
             }
@@ -627,6 +649,48 @@ var deleteFriends = function(username, databaseName) {
       }
       return dbConnection.disconnect();
     });
+  });
+};
+
+/**
+ * Update share option for messages.
+ * @param userId
+ * @param databaseName
+ * @param share
+ */
+var updateShareMessages = function (userId, databaseName, share) {
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+    return conn.Message.update({source: 'twitter_' + userId}, {$set: {share: share}}, {multi: true},
+      function (err, numAffected) {
+        if (err) {
+          console.log(err);
+        } else {
+          console.log(numAffected.nModified + " Twitter messages updated for " + databaseName + " at " + new Date());
+        }
+        return dbConnection.disconnect();
+    });
+  });
+};
+
+/**
+ * Update share option for friends.
+ * @param username
+ * @param databaseName
+ * @param share
+ */
+var updateShareFriends = function (username, databaseName, share) {
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+    return conn.Connection.update({username: username, source: 'twitter'}, {$set: {share: share}}, {multi: true},
+      function (err, numAffected) {
+        if (err) {
+          console.log(err);
+        } else {
+          console.log(numAffected.nModified + " Twitter friends updated for " + databaseName + " at " + new Date());
+        }
+        return dbConnection.disconnect();
+      });
   });
 };
 

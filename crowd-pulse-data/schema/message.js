@@ -22,6 +22,7 @@ var MessageSchema = builder(schemas.message, {
   longitude: Number,
   favs: Number,
   shares: Number,
+  share: Boolean,
   tags: [schemas.tag],
   tokens: [schemas.token],
   sentiment: Number,

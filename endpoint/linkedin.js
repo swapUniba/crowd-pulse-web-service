@@ -128,8 +128,8 @@ exports.endpoint = function() {
             if (user) {
 
               // update share option
-              if (params.share) {
-                user.identities.configs.linkedInConfig.share = params.share;
+              if (params.shareProfile !== null && params.shareProfile !== undefined) {
+                user.identities.configs.linkedInConfig.shareProfile = params.shareProfile;
               }
               user.save();
 
@@ -212,6 +212,9 @@ var updateUserProfile = function (username, callback) {
         if (err) {
           return err;
         }
+
+        // share default value
+        profile.identities.configs.linkedInConfig.shareProfile = true;
 
         // save the LinkedIn user ID
         if (userData.id) {
