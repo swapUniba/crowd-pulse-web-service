@@ -139,13 +139,21 @@ module.exports = function (io) {
             if (!user) {
               socket.emit("config", RESPONSE["device_not_found"]);
             } else {
-              if (data || data.length > 0) {
+              if (data && data.deviceId) {
                 if (user.identities.configs.devicesConfig) {
+                  var oldConfig;
+
+                  // search the configuration by device ID
                   var found = false;
                   for (var i = 0; i < user.identities.configs.devicesConfig.length && !found; i++) {
                     if (deviceId === user.identities.configs.devicesConfig[i].deviceId) {
+                      oldConfig = user.identities.configs.devicesConfig[i];
                       user.identities.configs.devicesConfig[i] = data;
                       found = true;
+
+                      // the configuration is changed, update personal data with the new share options (if any)
+                      updateShareOption(user.username, deviceId, oldConfig, data, user.username);
+                      updateShareOption(user.username, deviceId, oldConfig, data, DB_GLOBAL_DATA);
                     }
                   }
                   if (!found) {
@@ -155,13 +163,13 @@ module.exports = function (io) {
                   user.identities.configs.devicesConfig = [data];
                 }
                 user.save().then(function () {
+                  console.log("Configuration updated");
                   dbConnection.disconnect();
                 });
-                console.log("Configuration updated");
 
               } else {
 
-                //the device is asking for an updated configuration
+                //the device is asking for an updated configuration, search it by device ID
                 var found = false;
                 for (var i = 0; i < user.identities.configs.devicesConfig.length && !found; i++) {
                   if (deviceId === user.identities.configs.devicesConfig[i].deviceId) {
@@ -173,8 +181,11 @@ module.exports = function (io) {
 
               RESPONSE["config_acquired"].config = data;
 
-              //new configuration coming from web ui
+              // new configuration coming from web ui
               if (data.client === WEB_UI_CLIENT) {
+
+                // remove client field to prevent App crash
+                data.client = undefined;
                 RESPONSE["config_acquired"].code = RECEIVING;
               } else {
                 RESPONSE["config_acquired"].code = SUCCESS;
@@ -249,7 +260,13 @@ module.exports = function (io) {
         socket.emit("send_data", RESPONSE["not_authorized"]);
       }
     });
+
+    socket.on('disconnect', function () {
+      console.log("Device: " + deviceId + " disconnect");
+    });
+
   });
+
 
   /**
    * Store contact in the MongoDB database
@@ -260,40 +277,24 @@ module.exports = function (io) {
     if (contactData && contactData.length > 0) {
       var dbConnection = new CrowdPulse();
       dbConnection.connect(config.database.url, databaseName).then(function (conn) {
-        var elementSaved = 0;
-        contactData.forEach(function (element) {
 
-          //search contact by deviceId, contactId and username
-          conn.Connection.findOne({
-            deviceId: element.deviceId,
-            contactId: element.contactId,
-            username: element.username
-          }, function (err, contact) {
-            if (contact) {
-              contact.phoneNumber = element.phoneNumber;
-              contact.contactName = element.contactName;
-              contact.contactPhoneNumbers = element.contactPhoneNumbers;
-              contact.starred = element.starred;
-              contact.contactedTimes = element.contactedTimes;
-              contact.save().then(function () {
-                elementSaved++;
-                if (elementSaved >= contactData.length) {
-                  console.log(contactData.length + " contacts for " + element.deviceId + " saved or updated into " + databaseName);
-                  dbConnection.disconnect();
-                }
-              });
+        // loop function to insert contact data synchronously
+        (function loop (i) {
+          var contact = contactData[i];
+          conn.Connection.findOneAndUpdate({
+            deviceId: contact.deviceId,
+            username: contact.username,
+            contactId: contact.contactId
+          }, contact, {upsert: true}, function () {
+            i++;
+            if (i >= contactData.length) {
+              console.log(contactData.length + " contacts for " + contact.deviceId + " saved or updated into " + databaseName);
+              dbConnection.disconnect();
             } else {
-              conn.Connection.newFromObject(element).save().then(function () {
-                elementSaved++;
-                if (elementSaved >= contactData.length) {
-                  console.log(contactData.length + " contacts for " + element.deviceId + " saved or updated into " + databaseName);
-                  dbConnection.disconnect();
-                }
-              });
+              loop(i);
             }
-
           });
-        });
+        })(0);
       });
 
     } else {
@@ -318,6 +319,7 @@ module.exports = function (io) {
 
               accountData.forEach(function (element, j) {
                 var account = {
+                  deviceId: deviceId,
                   userAccountName: element.userAccountName,
                   packageName: element.packageName
                 };
@@ -333,14 +335,12 @@ module.exports = function (io) {
                 }
                 if (!found) {
                   user.identities.accounts.push(account);
-                }
-                user.save().then(function () {
                   elementSaved++;
-                  if (elementSaved >= accountData.length) {
-                    dbConnection.disconnect();
-                    console.log(accountData.length + " accounts for " + deviceId + " saved or updated");
-                  }
-                });
+                }
+              });
+              user.save().then(function () {
+                dbConnection.disconnect();
+                console.log(elementSaved + " accounts for " + deviceId + " saved or updated");
               });
             }
           });
@@ -356,9 +356,8 @@ module.exports = function (io) {
    * @param databaseName
    */
   var storePersonalData = function (personalData, databaseName) {
-    var dbConnection = new CrowdPulse();
     if (personalData && personalData.length > 0) {
-
+      var dbConnection = new CrowdPulse();
       dbConnection.connect(config.database.url, databaseName).then(function (conn) {
         var elementSaved = 0;
         personalData.forEach(function (element) {
@@ -366,6 +365,7 @@ module.exports = function (io) {
           conn.PersonalData.newFromObject(element).save().then(function () {
             elementSaved++;
             if (elementSaved >= personalData.length) {
+              dbConnection.disconnect();
               console.log(personalData.length + " personal data for " + element.deviceId + " data saved into " + databaseName);
             }
           });
@@ -375,6 +375,133 @@ module.exports = function (io) {
     } else {
       console.log("No personal data received");
     }
+  };
+
+  /**
+   * Update share option for every personal data, account and contact. This method checks if the new value of the
+   * device configuration isn't equal to the value of the old configuration.
+   * @param username
+   * @param deviceId
+   * @param oldConfig
+   * @param newConfig
+   * @param databaseName
+   */
+  var updateShareOption = function (username, deviceId, oldConfig, newConfig, databaseName) {
+
+    // check if contacts share option is changed
+    if (oldConfig.shareContact !== newConfig.shareContact) {
+      var share = newConfig.shareContact === '1';
+
+      // update contacts
+      var dbConnectionContact = new CrowdPulse();
+      dbConnectionContact.connect(config.database.url, databaseName).then(function (conn) {
+        conn.Connection.update({username: username, deviceId: deviceId},
+          {$set: {share: share}}, {multi: true}, function (err, numAffected) {
+            if (err) {
+              console.log(err);
+            } else {
+              console.log(numAffected.nModified + " contacts updated for " + databaseName + " at " + new Date());
+            }
+            dbConnectionContact.disconnect();
+          });
+      });
+    }
+
+    // check if GPS share option is changed
+    if (oldConfig.shareGPS !== newConfig.shareGPS) {
+      var share = newConfig.shareGPS === '1';
+
+      // update GPS
+      var dbConnectionGPS = new CrowdPulse();
+      dbConnectionGPS.connect(config.database.url, databaseName).then(function (conn) {
+        conn.PersonalData.update({username: username, deviceId: deviceId, source: 'gps'},
+          {$set: {share: share}}, {multi: true}, function (err, numAffected) {
+            if (err) {
+              console.log(err);
+            } else {
+              console.log(numAffected.nModified + " GPS data updated for " + databaseName + " at " + new Date());
+            }
+            dbConnectionGPS.disconnect();
+          });
+      });
+    }
+
+    // check if activity share option is changed
+    if (oldConfig.shareActivity !== newConfig.shareActivity) {
+      var share = newConfig.shareActivity === '1';
+
+      // update activity
+      var dbConnectionActivity = new CrowdPulse();
+      dbConnectionActivity.connect(config.database.url, databaseName).then(function (conn) {
+        conn.PersonalData.update({username: username, deviceId: deviceId, source: 'activity'},
+          {$set: {share: share}}, {multi: true}, function (err, numAffected) {
+            if (err) {
+              console.log(err);
+            } else {
+              console.log(numAffected.nModified + " activity data updated for " + databaseName + " at " + new Date());
+            }
+            dbConnectionActivity.disconnect();
+          });
+      });
+    }
+
+    // check if netStat share option is changed
+    if (oldConfig.shareNetStats !== newConfig.shareNetStats) {
+      var share = newConfig.shareNetStats === '1';
+
+      // update new stats
+      var dbConnectionNetStats = new CrowdPulse();
+      dbConnectionNetStats.connect(config.database.url, databaseName).then(function (conn) {
+        conn.PersonalData.update({username: username, deviceId: deviceId, source: 'netstats'},
+          {$set: {share: share}}, {multi: true}, function (err, numAffected) {
+            if (err) {
+              console.log(err);
+            } else {
+              console.log(numAffected.nModified + " netStats data updated for " + databaseName + " at " + new Date());
+            }
+            dbConnectionNetStats.disconnect();
+          });
+      });
+    }
+
+    // check if appInfo share option is changed
+    if (oldConfig.shareAppInfo !== newConfig.shareAppInfo) {
+      var share = newConfig.shareAppInfo === '1';
+
+      // update appInfo
+      var dbConnectionAppInfo = new CrowdPulse();
+      dbConnectionAppInfo.connect(config.database.url, databaseName).then(function (conn) {
+        conn.PersonalData.update({username: username, deviceId: deviceId, source: 'appinfo'},
+          {$set: {share: share}}, {multi: true}, function (err, numAffected) {
+            if (err) {
+              console.log(err);
+            } else {
+              console.log(numAffected.nModified + " appInfo data updated for " + databaseName + " at " + new Date());
+            }
+            dbConnectionAppInfo.disconnect();
+          });
+      });
+    }
+
+    // check if display share option is changed
+    if (oldConfig.shareDisplay !== newConfig.shareDisplay) {
+      var share = newConfig.shareDisplay === '1';
+
+      // update display
+      var dbConnectionDisplay = new CrowdPulse();
+      dbConnectionDisplay.connect(config.database.url, databaseName).then(function (conn) {
+        conn.PersonalData.update({username: username, deviceId: deviceId, source: 'display'},
+          {$set: {share: share}}, {multi: true}, function (err, numAffected) {
+            if (err) {
+              console.log(err);
+            } else {
+              console.log(numAffected.nModified + " display data updated for " + databaseName + " at " + new Date());
+            }
+            dbConnectionDisplay.disconnect();
+          });
+      });
+    }
+
   };
 
 };
