@@ -49,6 +49,15 @@ var ProfileSchema = builder(schemas.profile, {
       }
     ],
     configs: {
+      holisticProfileConfig: {
+        shareDemographics: {type: Boolean, default: true},
+        shareInterest: {type: Boolean, default: true},
+        shareAffects: {type: Boolean, default: true},
+        shareCognitiveAspects: {type: Boolean, default: true},
+        shareBehavior: {type: Boolean, default: true},
+        shareSocialRelations: {type: Boolean, default: true},
+        sharePhysicalState: {type: Boolean, default: true}
+      },
       facebookConfig: {
         facebookId: String,
         accessToken: String,
