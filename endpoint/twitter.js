@@ -366,7 +366,8 @@ var updateTweets = function (username) {
 
   var params = {
     since_id: null,
-    count: 200
+    count: 200,
+    tweet_mode: 'extended'
   };
 
   // get oauth data from database
@@ -389,9 +390,10 @@ var updateTweets = function (username) {
         if (tweets && tweets.length > 0) {
           var messages = [];
           tweets.forEach(function (tweet) {
+            console.log(tweet);
             var tweetToSave = {
               oId: tweet.id_str,
-              text: tweet.text,
+              text: tweet.full_text,
               source: 'twitter_' + tweet.user.id,
               fromUser: tweet.user.screen_name,
               date: new Date(tweet.created_at),
