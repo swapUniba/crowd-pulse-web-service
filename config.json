@@ -15,6 +15,8 @@
     "secret": "secret-test-to-change-to-more-security"
   },
   "batch": {
-    "timeout": "0 0 * * *"
+    "cleaningPersonalDataTimeout": "*/1 * * * *",
+    "socialProfileTimeout": "0 0 * * *",
+    "demographicsTimeout": "* * 1 * *"
   }
 }

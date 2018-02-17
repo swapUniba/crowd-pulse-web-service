@@ -343,6 +343,9 @@ var updateUserProfile = function(username, callback) {
       };
       if (params.access_token) {
 
+        // true if it is the first time user requests facebook profile
+        var firstRequest = !profile.identities.configs.facebookConfig.facebookId;
+
         // retrieve profile information about the current user
         request.get({ url: API_USER_DATA, qs: params, json: true }, function(err, response, userData) {
 
@@ -390,6 +393,11 @@ var updateUserProfile = function(username, callback) {
             console.log("Facebook profile of " + username + " updated at " + new Date());
             dbConnection.disconnect();
           });
+
+          // update demographics data
+          if (firstRequest) {
+            batch.updateDemographicsForUser(profile.username);
+          }
 
           callback(profile);
         });

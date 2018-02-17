@@ -14,5 +14,6 @@ module.exports = {
   user: 'User',
   personalData: 'PersonalData',
   connection: 'Connection',
-  like: 'Like'
+  like: 'Like',
+  interest: 'Interest'
 };

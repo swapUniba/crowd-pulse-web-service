@@ -7,6 +7,7 @@ var builder = require('./schemaBuilder');
 var TwitterProfileSchema = require('./../schema/twitterProfile');
 var FacebookProfileSchema = require('./../schema/facebookProfile');
 var LinkedInProfileSchema = require('./../schema/linkedinProfile');
+var DemographicsSchema = require('./demographic');
 
 var schemas = require('./schemaName');
 
@@ -44,6 +45,7 @@ var ProfileSchema = builder(schemas.profile, {
     ],
     accounts: [
       {
+        deviceId: String,
         userAccountName: String,
         packageName: String
       }
@@ -110,7 +112,9 @@ var ProfileSchema = builder(schemas.profile, {
         }
       ]
     }
-  }
+  },
+  demographics: DemographicsSchema,
+  interests: [schemas.interest]
 });
 
 ProfileSchema.statics.newFromObject = function(object) {

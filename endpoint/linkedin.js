@@ -7,6 +7,7 @@ var CrowdPulse = require('./../crowd-pulse-data');
 var config = require('./../lib/config');
 var databaseName = require('./../crowd-pulse-data/databaseName');
 var LinkedInProfileSchema = require('./../crowd-pulse-data/schema/linkedinProfile');
+var batch = require('./../lib/batchOperations');
 
 const CLIENT_ID = '77kw2whm8zdmzr';
 const CLIENT_SECRET = 'IgFP60GaF2Sa8jzD';
@@ -208,6 +209,9 @@ var updateUserProfile = function (username, callback) {
     if (profile) {
       params.oauth2_access_token = profile.identities.configs.linkedInConfig.accessToken;
 
+      // true if it is the first time user requests linkedIn profile
+      var firstRequest = !profile.identities.configs.linkedInConfig.linkedInId;
+
       request.get({url: API_PEOPLE, qs: params, json: true}, function (err, response, userData) {
         if (err) {
           return err;
@@ -244,6 +248,11 @@ var updateUserProfile = function (username, callback) {
           console.log("LinkedIn profile of " + username + " updated at " + new Date());
           dbConnection.disconnect();
         });
+
+        // update demographics data
+        if (firstRequest) {
+          batch.updateDemographicsForUser(profile.username);
+        }
 
         callback(profile);
       });

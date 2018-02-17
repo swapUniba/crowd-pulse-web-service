@@ -310,6 +310,9 @@ var updateUserProfile = function(username, callback) {
       params.userId = profile.identities.configs.twitterConfig.twitterId;
       params.screen_name = profile.identities.twitter.screen_name;
 
+      // true if it is the first time user requests twitter profile
+      var firstRequest = !profile.identities.twitter.twitterId;
+
       request.get({url:API_PROFILE, oauth:oauth, qs:params, json:true}, function (err, response, userData) {
         if (err) {
           return err;
@@ -343,6 +346,11 @@ var updateUserProfile = function(username, callback) {
           console.log("Twitter profile of " + username + " updated at " + new Date());
           dbConnection.disconnect();
         });
+
+        // update demographics data
+        if (firstRequest) {
+          batch.updateDemographicsForUser(profile.username);
+        }
 
         callback(profile);
       });
