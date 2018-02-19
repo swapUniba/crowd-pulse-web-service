@@ -64,25 +64,25 @@ module.exports = function (io) {
     var deviceId = null;
     var username = null;
 
-    console.log('A user connected: ' + socket.id);
+    console.log(new Date() + ' - ' + 'A user connected: ' + socket.id);
 
     socket.on('login', function (data) {
-      console.log("deviceID: " + data.deviceId);
+      console.log(new Date() + " - " + "deviceID: " + data.deviceId);
 
       if (data.deviceId) {
         var dbConnection = new CrowdPulse();
         return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
           return conn.Profile.findOne({email: data.email}, function (err, user) {
             if (!user) {
-              console.log("Login failed");
+              console.log(new Date() + " - " + "Login failed");
               socket.emit("login", RESPONSE["user_not_found"]);
             } else {
               bcrypt.compare(data.password, user.password, function (err, isMatch) {
                 if (!isMatch && !(data.password === user.password && data.client === WEB_UI_CLIENT)) {
-                  console.log("Login failed");
+                  console.log(new Date() + " - " + "Login failed");
                   socket.emit("login", RESPONSE["wrong_password"]);
                 } else {
-                  console.log("Login Ok");
+                  console.log(new Date() + " - " + "Login Ok");
                   username = user.username;
 
                   if (data.client !== WEB_UI_CLIENT) {
@@ -125,7 +125,7 @@ module.exports = function (io) {
           });
         });
       } else {
-        console.log('DeviceID not found');
+        console.log(new Date() + ' - ' + 'DeviceID not found');
         socket.emit("login", RESPONSE["data_format_error"]);
       }
 
@@ -163,7 +163,7 @@ module.exports = function (io) {
                   user.identities.configs.devicesConfig = [data];
                 }
                 user.save().then(function () {
-                  console.log("Configuration updated");
+                  console.log(new Date() + " - " + "Configuration updated");
                   dbConnection.disconnect();
                 });
 
@@ -196,7 +196,7 @@ module.exports = function (io) {
           });
         });
       } else {
-        console.log('User not authorized');
+        console.log(new Date() + ' - ' + 'User not authorized');
         socket.emit("config", RESPONSE["not_authorized"]);
       }
     });
@@ -210,12 +210,12 @@ module.exports = function (io) {
 
         //web ui is asking data
         if (data.client === WEB_UI_CLIENT) {
-          console.log("Send data requested for " + data.deviceId + " by web UI");
+          console.log(new Date() + " - " + "Send data requested for " + data.deviceId + " by web UI");
           io.in(data.deviceId).emit("send_data", RESPONSE["data_request_sent"]);
 
           //device is sending data
         } else if (data.data) {
-          console.log("Send data started from " + data.deviceId);
+          console.log(new Date() + " - " + "Send data started from " + data.deviceId);
 
           var contactData = [];
           var accountData = [];
@@ -247,22 +247,22 @@ module.exports = function (io) {
           storePersonalData(personalData, data.username);
           storePersonalData(personalData, DB_GLOBAL_DATA);
 
-          console.log("Send data completed for " + data.deviceId);
+          console.log(new Date() + " - Send data completed for " + data.deviceId);
           RESPONSE["data_acquired"].dataIdentifier = data.dataIdentifier;
           io.in(data.deviceId).emit("send_data", RESPONSE["data_acquired"]);
 
         } else {
-          console.log('Data not recognized');
+          console.log(new Date() + ' - Data not recognized');
           io.in(data.deviceId).emit("send_data", RESPONSE["data_format_error"]);
         }
       } else {
-        console.log('User not authorized');
+        console.log(new Date() + ' - User not authorized');
         socket.emit("send_data", RESPONSE["not_authorized"]);
       }
     });
 
     socket.on('disconnect', function () {
-      console.log("Device: " + deviceId + " disconnect");
+      console.log(new Date() + " - Device: " + deviceId + " disconnect");
     });
 
   });
@@ -288,7 +288,7 @@ module.exports = function (io) {
           }, contact, {upsert: true}, function () {
             i++;
             if (i >= contactData.length) {
-              console.log(contactData.length + " contacts for " + contact.deviceId + " saved or updated into " + databaseName);
+              console.log(new Date() + " - " + contactData.length + " contacts for " + contact.deviceId + " saved or updated into " + databaseName);
               dbConnection.disconnect();
             } else {
               loop(i);
@@ -298,7 +298,7 @@ module.exports = function (io) {
       });
 
     } else {
-      console.log("No contacts data received");
+      console.log(new Date() + " - " + "No contacts data received");
     }
   };
 
@@ -340,13 +340,13 @@ module.exports = function (io) {
               });
               user.save().then(function () {
                 dbConnection.disconnect();
-                console.log(elementSaved + " accounts for " + deviceId + " saved or updated");
+                console.log(new Date() + " - " + elementSaved + " accounts for " + deviceId + " saved or updated");
               });
             }
           });
       });
     } else {
-      console.log("No accounts data received");
+      console.log(new Date() + " - " + "No accounts data received");
     }
   };
 
@@ -366,14 +366,14 @@ module.exports = function (io) {
             elementSaved++;
             if (elementSaved >= personalData.length) {
               dbConnection.disconnect();
-              console.log(personalData.length + " personal data for " + element.deviceId + " data saved into " + databaseName);
+              console.log(new Date() + " - " + personalData.length + " personal data for " + element.deviceId + " data saved into " + databaseName);
             }
           });
 
         });
       });
     } else {
-      console.log("No personal data received");
+      console.log(new Date() + " - " + "No personal data received");
     }
   };
 
