@@ -357,11 +357,14 @@ var updateUserProfile = function(username, callback) {
           profile.identities.facebook.facebookId = userData.id;
           profile.identities.configs.facebookConfig.facebookId = userData.id;
 
-          // share default value
-          facebookConfig.shareFriends = true;
-          facebookConfig.shareMessages = true;
-          facebookConfig.shareProfile = true;
-          facebookConfig.shareLikes = true;
+          if (firstRequest) {
+
+            // share default value
+            facebookConfig.shareFriends = true;
+            facebookConfig.shareMessages = true;
+            facebookConfig.shareProfile = true;
+            facebookConfig.shareLikes = true;
+          }
 
           // save other Facebook data
           for (var key in FacebookProfileSchema) {

@@ -323,10 +323,13 @@ var updateUserProfile = function(username, callback) {
           profile.identities.twitter.twitterId = userData.id;
         }
 
-        // share default value
-        profile.identities.configs.twitterConfig.shareFriends = true;
-        profile.identities.configs.twitterConfig.shareMessages = true;
-        profile.identities.configs.twitterConfig.shareProfile = true;
+        if (firstRequest) {
+
+          // share default value
+          profile.identities.configs.twitterConfig.shareFriends = true;
+          profile.identities.configs.twitterConfig.shareMessages = true;
+          profile.identities.configs.twitterConfig.shareProfile = true;
+        }
 
         // save other returned data
         for (var key in TwitterProfileSchema) {

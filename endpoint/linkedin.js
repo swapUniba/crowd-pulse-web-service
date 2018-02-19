@@ -217,8 +217,11 @@ var updateUserProfile = function (username, callback) {
           return err;
         }
 
-        // share default value
-        profile.identities.configs.linkedInConfig.shareProfile = true;
+        if (firstRequest) {
+          
+          // share default value
+          profile.identities.configs.linkedInConfig.shareProfile = true;
+        }
 
         // save the LinkedIn user ID
         if (userData.id) {
