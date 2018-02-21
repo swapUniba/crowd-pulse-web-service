@@ -13,8 +13,8 @@ var batch = require('./../lib/batchOperations');
 const DB_PROFILES = databaseName.profiles;
 const DB_GLOBAL_DATA = databaseName.globalData;
 
-const CONSUMER_KEY = 'UwKgjmP3nkgswMi18fFRMO5Kc';
-const CONSUMER_SECRET = 'gJ0NEoKovmNum8AXb9zstwYCcdU8WqUK0GnTrWx9kXWeFYSCAX';
+const CONSUMER_KEY = 'iigvOYorVOvnKScjm5t22ak5E';
+const CONSUMER_SECRET = '5j0tpR5lwdzjW18qgdCqYndiScAwoMtCWUD32GPfR0elTHnytI';
 
 const API_REQUEST_TOKEN = 'https://api.twitter.com/oauth/request_token';
 const API_ACCESS_TOKEN = 'https://api.twitter.com/oauth/access_token';
