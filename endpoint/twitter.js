@@ -401,7 +401,6 @@ var updateTweets = function (username) {
         if (tweets && tweets.length > 0) {
           var messages = [];
           tweets.forEach(function (tweet) {
-            console.log(tweet);
             var tweetToSave = {
               oId: tweet.id_str,
               text: tweet.full_text,
