@@ -1,5 +1,6 @@
 'use strict';
 
+var Q = require('q');
 var mongoose = require('mongoose');
 var builder = require('./schemaBuilder');
 var schemas = require('./schemaName');
@@ -12,27 +13,68 @@ var InterestSchema = builder(schemas.interest, {
   confidence: Number
 });
 
+// Model methods
+
 InterestSchema.statics.newFromObject = function(object) {
   return new this(object);
 };
 
-module.exports = InterestSchema;
+InterestSchema.statics.statWordCloud = function (from, to, source) {
+  return Q(this.aggregate(buildStatWordCloud(from, to, source)).exec());
+};
 
-/*
- db.getCollection('Interest').aggregate([{
-    $project: {
-      word: "$oId"
+
+var buildStatWordCloud = function(from, to, source) {
+  var filter = undefined;
+
+  from = new Date(from);
+  to = new Date(to);
+  var hasFrom = !isNaN(from.getDate());
+  var hasTo = !isNaN(to.getDate());
+  var hasSource = (typeof source != 'undefined' && source!='');
+
+  if (hasFrom || hasTo || hasSource) {
+    filter = {$match: {}};
+
+    if (hasFrom || hasTo) {
+      filter.$match['timestamp'] = {};
+      if (hasFrom) {
+        filter.$match['timestamp']['$gte'] = from.getTime();
+      }
+      if (hasTo) {
+        filter.$match['timestamp']['$lte'] = to.getTime();
+      }
     }
-  }, {
-    $group: {
-      _id: "$word",
-      total: {$sum: 1}
+
+    if (hasSource) {
+      filter.$match['source'] = source;
+    }
+  }
+
+  var aggregations = [];
+
+  if (filter) {
+    aggregations.push(filter);
+  }
+
+  aggregations.push({
+    $project: {
+      value: "$value"
     }
   },{
+    $group: {
+      _id: "$value",
+      weight: {$sum: 1}
+    }
+  }, {
     $project: {
       _id: false,
-      word: "$_id",
-      total: true
+      value: "$_id",
+      weight: true
     }
-  }]);
-*/
+  });
+
+  return aggregations;
+};
+
+module.exports = InterestSchema;

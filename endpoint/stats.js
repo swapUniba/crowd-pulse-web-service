@@ -261,5 +261,18 @@ module.exports = function() {
         });
     });
 
+  router.route('/stats/interests/wordcloud')
+    .get(function(req, res) {
+      var dbConn = new CrowdPulse();
+      return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+        return conn.Interest.statWordCloud(req.query.from, req.query.to, req.query.source);
+      })
+        .then(qSend(res))
+        .catch(qErr(res))
+        .finally(function() {
+          dbConn.disconnect();
+        });
+    });
+
   return router;
 };
