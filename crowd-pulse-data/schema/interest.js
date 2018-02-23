@@ -72,6 +72,12 @@ var buildStatWordCloud = function(from, to, source) {
       value: "$_id",
       weight: true
     }
+  }, {
+    $sort: {
+      weight: -1
+    }
+  }, {
+    $limit: 100
   });
 
   return aggregations;
