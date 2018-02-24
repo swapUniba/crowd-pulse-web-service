@@ -503,6 +503,10 @@ var buildStatEmotionTimelineQuery = function(type, terms, from, to, sentiment, l
   }
 
   aggregations.push({
+    $match: {
+      emotion: {$exists: true, $ne: null, $ne: undefined}
+    }
+  }, {
     $project: {
       _id: false,
       date: {$dateToString: {format: "%Y-%m-%dT00:00:00Z", date: "$date"}},
