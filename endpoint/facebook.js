@@ -449,7 +449,7 @@ var updatePosts = function(username) {
             }
             messages.push({
               oId: post.id,
-              text: post.message,
+              text: post.message || '',
               source: 'facebook_' + facebookConfig.facebookId,
               fromUser: facebookConfig.facebookId,
               date: new Date(post.created_time),
