@@ -134,6 +134,13 @@ module.exports = function() {
       });
     });
 
+  router.route('/stats/emotion/timeline')
+    .get(function(req, res) {
+      return handleGenericStat(req, res, function(conn, type, terms, from, to, sentiment, language, lat, lng, ray) {
+        return conn.Message.statEmotionTimeline(type, terms, from, to, sentiment, language, lat, lng, ray);
+      });
+    });
+
   router.route('/stats/message/timeline')
   // /api/stats/message/timeline?db=sexism&from=2015-10-11&to=2015-10-13&type=tag&terms=aword&terms=anotherword
     .get(function(req, res) {

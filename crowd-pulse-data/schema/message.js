@@ -27,7 +27,8 @@ var MessageSchema = builder(schemas.message, {
   tokens: [schemas.token],
   sentiment: Number,
   number_cluster: Number,
-  cluster_kmeans: Number
+  cluster_kmeans: Number,
+  emotion: String
 });
 
 MessageSchema.statics.newFromObject = function(object) {
@@ -491,6 +492,59 @@ var buildStatSentimentTimelineQuery = function(type, terms, from, to, sentiment,
   return aggregations;
 };
 
+var buildStatEmotionTimelineQuery = function(type, terms, from, to, sentiment, language, lat, lng, ray) {
+  // create the filter
+  var filter = buildFilter(type, terms, from, to, sentiment, language, lat, lng, ray);
+
+  var aggregations = [];
+
+  if (filter) {
+    aggregations.push(filter);
+  }
+
+  aggregations.push({
+    $project: {
+      _id: false,
+      date: {$dateToString: {format: "%Y-%m-%dT00:00:00Z", date: "$date"}},
+      emotion: true
+    }
+  }, {
+    $group: {
+      _id: {emotion: '$emotion', date: '$date'},
+      value: {
+        $sum: 1
+      }
+    }
+  }, {
+    $project: {
+      _id: false,
+      emotion: '$_id.emotion',
+      date: '$_id.date',
+      value: '$value'
+    }
+  }, {
+    $sort: {'date': 1}
+  }, {
+    $group: {
+      _id: '$emotion',
+      values: {
+        $push: {
+          date: '$date',
+          value: '$value'
+        }
+      }
+    }
+  }, {
+    $project: {
+      _id: false,
+      name: '$_id',
+      values: true
+    }
+  });
+
+  return aggregations;
+};
+
 var buildStatMessageTimelineQuery = function(type, terms, from, to, sentiment, language, lat, lng, ray) {
   // create the filter
   var filter = buildFilter(type, terms, from, to, sentiment, language, lat, lng, ray);
@@ -566,6 +620,10 @@ MessageSchema.statics.statClusterMessages = function(type, terms, from, to,senti
 
 MessageSchema.statics.statSentimentMessages = function(type, terms, from, to,sentiment, language, lat, lng, ray, sen) {
   return Q(this.find(buildStatSentimentMessagesQuery(type, terms, from, to, sentiment, language, lat, lng, ray, sen)).exec());
+};
+
+MessageSchema.statics.statEmotionTimeline = function(type, terms, from, to,sentiment, language, lat, lng, ray, sen) {
+  return Q(this.aggregate(buildStatEmotionTimelineQuery(type, terms, from, to, sentiment, language, lat, lng, ray, sen)).exec());
 };
 
 MessageSchema.statics.statSentimentTimeline = function(type, terms, from, to, sentiment, language, lat, lng, ray) {
