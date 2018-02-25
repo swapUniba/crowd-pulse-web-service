@@ -241,15 +241,33 @@ module.exports = function (io) {
             }
           });
 
-          storeContact(contactData, data.username);
-          storeContact(contactData, DB_GLOBAL_DATA);
-          storeAccount(accountData, data.deviceId);
-          storePersonalData(personalData, data.username);
-          storePersonalData(personalData, DB_GLOBAL_DATA);
+          var dbConnection = new CrowdPulse();
+          return dbConnection.connect(config.database.url, DB_PROFILES).then(function(conn) {
+            return conn.Profile.findOne({'identities.devices': {$elemMatch: {deviceId: data.deviceId}}}, function (err, user) {
+              dbConnection.disconnect();
 
-          console.log(new Date() + " - Send data completed for " + data.deviceId);
-          RESPONSE["data_acquired"].dataIdentifier = data.dataIdentifier;
-          io.in(data.deviceId).emit("send_data", RESPONSE["data_acquired"]);
+              var deviceConfig;
+              if (user && user.identities.configs.devicesConfig && user.identities.configs.devicesConfig.length) {
+
+                // search the configuration by device ID
+                for (var i = 0; i < user.identities.configs.devicesConfig.length && !deviceConfig; i++) {
+                  if (deviceId === user.identities.configs.devicesConfig[i].deviceId) {
+                    deviceConfig = user.identities.configs.devicesConfig[i];
+                  }
+                }
+              }
+
+              storeContact(contactData, data.username, deviceConfig);
+              storeContact(contactData, DB_GLOBAL_DATA, deviceConfig);
+              storeAccount(accountData, data.deviceId);
+              storePersonalData(personalData, data.username, deviceConfig);
+              storePersonalData(personalData, DB_GLOBAL_DATA, deviceConfig);
+
+              console.log(new Date() + " - Send data completed for " + data.deviceId);
+              RESPONSE["data_acquired"].dataIdentifier = data.dataIdentifier;
+              io.in(data.deviceId).emit("send_data", RESPONSE["data_acquired"]);
+            });
+          });
 
         } else {
           console.log(new Date() + ' - Data not recognized');
@@ -272,8 +290,9 @@ module.exports = function (io) {
    * Store contact in the MongoDB database
    * @param contactData
    * @param databaseName
+   * @param deviceConfig
    */
-  var storeContact = function (contactData, databaseName) {
+  var storeContact = function (contactData, databaseName, deviceConfig) {
     if (contactData && contactData.length > 0) {
       var dbConnection = new CrowdPulse();
       dbConnection.connect(config.database.url, databaseName).then(function (conn) {
@@ -281,6 +300,13 @@ module.exports = function (io) {
         // loop function to insert contact data synchronously
         (function loop (i) {
           var contact = contactData[i];
+
+          if (deviceConfig) {
+            contact.share = deviceConfig.shareContact === '1';
+          } else {
+            contact.share = false;
+          }
+
           conn.Connection.findOneAndUpdate({
             deviceId: contact.deviceId,
             username: contact.username,
@@ -354,13 +380,39 @@ module.exports = function (io) {
    * Store generic personal data in the MongoDB database
    * @param personalData
    * @param databaseName
+   * @param deviceConfig
    */
-  var storePersonalData = function (personalData, databaseName) {
+  var storePersonalData = function (personalData, databaseName, deviceConfig) {
     if (personalData && personalData.length > 0) {
       var dbConnection = new CrowdPulse();
       dbConnection.connect(config.database.url, databaseName).then(function (conn) {
         var elementSaved = 0;
         personalData.forEach(function (element) {
+
+          if (deviceConfig) {
+            switch (element.source) {
+              case 'appinfo':
+                element.share = deviceConfig.shareAppInfo === '1';
+                break;
+              case 'netstats':
+                element.share = deviceConfig.shareNetStats === '1';
+                break;
+              case 'activity':
+                element.share = deviceConfig.shareActivity === '1';
+                break;
+              case 'gps':
+                element.share = deviceConfig.shareGPS === '1';
+                break;
+              case 'display':
+                element.share = deviceConfig.shareDisplay === '1';
+                break;
+              default:
+                element.share = false;
+                break;
+            }
+          } else {
+            element.share = false;
+          }
 
           conn.PersonalData.newFromObject(element).save().then(function () {
             elementSaved++;
