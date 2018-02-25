@@ -114,7 +114,22 @@ var ProfileSchema = builder(schemas.profile, {
     }
   },
   demographics: DemographicsSchema,
-  interests: [schemas.interest]
+  personalities: [{
+    openness: Number,
+    conscientiousness: Number,
+    extroversion: Number,
+    agreeableness: Number,
+    neuroticism: Number,
+    timestamp: Number,
+    source: String,
+    confidence: Number
+  }],
+  empathies: [{
+    value: Number,
+    timestamp: Number,
+    source: String,
+    confidence: Number
+  }]
 });
 
 ProfileSchema.statics.newFromObject = function(object) {

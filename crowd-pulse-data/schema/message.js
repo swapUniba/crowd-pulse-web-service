@@ -4,6 +4,7 @@ var Q = require('q');
 var mongoose = require('mongoose');
 var builder = require('./schemaBuilder');
 var schemas = require('./schemaName');
+var databaseName = require('./../databaseName');
 
 var MessageSchema = builder(schemas.message, {
   id: mongoose.Schema.ObjectId,
@@ -449,6 +450,15 @@ var buildStatSentimentTimelineQuery = function(type, terms, from, to, sentiment,
     aggregations.push(filter);
   }
 
+  // getting global data, filter message share value
+  if (type === databaseName.globalData) {
+    aggregations.push({
+      $match: {
+        share: {$eq: true}
+      }
+    })
+  }
+
   aggregations.push({
     $project: {
       _id: false,
@@ -500,6 +510,15 @@ var buildStatEmotionTimelineQuery = function(type, terms, from, to, sentiment, l
 
   if (filter) {
     aggregations.push(filter);
+  }
+
+  // getting global data, filter message share value
+  if (type === databaseName.globalData) {
+    aggregations.push({
+      $match: {
+        share: {$eq: true}
+      }
+    })
   }
 
   aggregations.push({
