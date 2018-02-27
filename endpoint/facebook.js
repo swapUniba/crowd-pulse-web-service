@@ -493,6 +493,13 @@ var updatePosts = function(username) {
                       }
                     }, 60000);
                   })(projects.length - 1);
+
+                  // update user interests
+                  setTimeout(function () {
+                    batch.updateInterestsForUser(username);
+
+                  }, 15 * 60 * 1000); // wait 15 minutes
+
                 }
 
               }
@@ -561,8 +568,8 @@ var updateLikes = function(username) {
 
                 // create new db connection to save last like timestamp in the user profile config
                 dbConnection = new CrowdPulse();
-                return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
-                  return conn.Profile.findOne({username: username}, function (err, profile) {
+                dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+                  conn.Profile.findOne({username: username}, function (err, profile) {
                     if (profile) {
                       profile.identities.configs.facebookConfig.lastLikeId = likesToSave[0].date.getTime();
                       profile.save().then(function () {
@@ -571,6 +578,13 @@ var updateLikes = function(username) {
                     }
                   });
                 });
+
+                // update user interests
+                setTimeout(function () {
+                  batch.updateInterestsForUser(username);
+
+                }, 60 * 1000); // wait 1 minute
+
               }
             });
           });
