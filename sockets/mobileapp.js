@@ -17,6 +17,12 @@ const WEB_UI_CLIENT = "web-ui";
 // source string type used for filtering data
 const SOURCE_CONTACT = "contact";
 const SOURCE_ACCOUNTS = "accounts";
+const SOURCE_APP_INFO = "appinfo";
+const SOURCE_NET_STATS = "netstats";
+const SOURCE_DISPLAY = "display";
+const SOURCE_GPS = "gps";
+const SOURCE_ACTIVITY = "activity";
+
 
 const RESPONSE = {
   "user_not_found": {
@@ -251,7 +257,7 @@ module.exports = function (io) {
 
                 // search the configuration by device ID
                 for (var i = 0; i < user.identities.configs.devicesConfig.length && !deviceConfig; i++) {
-                  if (deviceId === user.identities.configs.devicesConfig[i].deviceId) {
+                  if (data.deviceId === user.identities.configs.devicesConfig[i].deviceId) {
                     deviceConfig = user.identities.configs.devicesConfig[i];
                   }
                 }
@@ -391,19 +397,19 @@ module.exports = function (io) {
 
           if (deviceConfig) {
             switch (element.source) {
-              case 'appinfo':
+              case SOURCE_APP_INFO:
                 element.share = deviceConfig.shareAppInfo === '1';
                 break;
-              case 'netstats':
+              case SOURCE_NET_STATS:
                 element.share = deviceConfig.shareNetStats === '1';
                 break;
-              case 'activity':
+              case SOURCE_ACTIVITY:
                 element.share = deviceConfig.shareActivity === '1';
                 break;
-              case 'gps':
+              case SOURCE_GPS:
                 element.share = deviceConfig.shareGPS === '1';
                 break;
-              case 'display':
+              case SOURCE_DISPLAY:
                 element.share = deviceConfig.shareDisplay === '1';
                 break;
               default:
@@ -466,7 +472,7 @@ module.exports = function (io) {
       // update GPS
       var dbConnectionGPS = new CrowdPulse();
       dbConnectionGPS.connect(config.database.url, databaseName).then(function (conn) {
-        conn.PersonalData.update({username: username, deviceId: deviceId, source: 'gps'},
+        conn.PersonalData.update({username: username, deviceId: deviceId, source: SOURCE_GPS},
           {$set: {share: share}}, {multi: true}, function (err, numAffected) {
             if (err) {
               console.log(err);
@@ -485,7 +491,7 @@ module.exports = function (io) {
       // update activity
       var dbConnectionActivity = new CrowdPulse();
       dbConnectionActivity.connect(config.database.url, databaseName).then(function (conn) {
-        conn.PersonalData.update({username: username, deviceId: deviceId, source: 'activity'},
+        conn.PersonalData.update({username: username, deviceId: deviceId, source: SOURCE_ACTIVITY},
           {$set: {share: share}}, {multi: true}, function (err, numAffected) {
             if (err) {
               console.log(err);
@@ -504,7 +510,7 @@ module.exports = function (io) {
       // update new stats
       var dbConnectionNetStats = new CrowdPulse();
       dbConnectionNetStats.connect(config.database.url, databaseName).then(function (conn) {
-        conn.PersonalData.update({username: username, deviceId: deviceId, source: 'netstats'},
+        conn.PersonalData.update({username: username, deviceId: deviceId, source: SOURCE_NET_STATS},
           {$set: {share: share}}, {multi: true}, function (err, numAffected) {
             if (err) {
               console.log(err);
@@ -523,7 +529,7 @@ module.exports = function (io) {
       // update appInfo
       var dbConnectionAppInfo = new CrowdPulse();
       dbConnectionAppInfo.connect(config.database.url, databaseName).then(function (conn) {
-        conn.PersonalData.update({username: username, deviceId: deviceId, source: 'appinfo'},
+        conn.PersonalData.update({username: username, deviceId: deviceId, source: SOURCE_APP_INFO},
           {$set: {share: share}}, {multi: true}, function (err, numAffected) {
             if (err) {
               console.log(err);
@@ -542,7 +548,7 @@ module.exports = function (io) {
       // update display
       var dbConnectionDisplay = new CrowdPulse();
       dbConnectionDisplay.connect(config.database.url, databaseName).then(function (conn) {
-        conn.PersonalData.update({username: username, deviceId: deviceId, source: 'display'},
+        conn.PersonalData.update({username: username, deviceId: deviceId, source: SOURCE_DISPLAY},
           {$set: {share: share}}, {multi: true}, function (err, numAffected) {
             if (err) {
               console.log(err);
