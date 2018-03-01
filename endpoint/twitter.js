@@ -473,12 +473,6 @@ var updateTweets = function (username) {
                       }
                     }, 60000);
                   })(projects.length - 1);
-
-                  // update user interests
-                  setTimeout(function () {
-                    batch.updateInterestsForUser(username);
-
-                  }, 15 * 60 * 1000); // wait 15 minutes
                 }
 
               }
