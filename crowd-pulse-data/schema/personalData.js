@@ -40,6 +40,101 @@ PersonalDataSchema.statics.newFromObject = function(object) {
   return new this(object);
 };
 
+PersonalDataSchema.statics.findDuplicatedAppInfoData = function () {
+  return Q(this.aggregate([{
+    $match: {
+      timestamp: { $exists : true },
+      source: 'appinfo'
+    }
+  }, {
+    $group: {
+      _id: {username: "$username", deviceId: "$deviceId", timestamp: "$timestamp", packageName: "$packageName"},
+      dups: { $push: "$_id" },
+      count: { $sum: 1 }
+    }
+  }, {
+    $match: {
+      count: { $gt: 1 }
+    }
+  }]).exec());
+};
+
+PersonalDataSchema.statics.findDuplicatedNetStatsData = function () {
+  return Q(this.aggregate([{
+    $match: {
+      timestamp: { $exists : true },
+      source: 'netstats'
+    }
+  }, {
+    $group: {
+      _id: {username: "$username", deviceId: "$deviceId", timestamp: "$timestamp", networkType: "$networkType"},
+      dups: { $push: "$_id" },
+      count: { $sum: 1 }
+    }
+  }, {
+    $match: {
+      count: { $gt: 1 }
+    }
+  }]).exec());
+};
+
+PersonalDataSchema.statics.findDuplicatedGPSData = function () {
+  return Q(this.aggregate([{
+    $match: {
+      timestamp: { $exists : true },
+      source: 'gps'
+    }
+  }, {
+    $group: {
+      _id: {username: "$username", deviceId: "$deviceId", timestamp: "$timestamp"},
+      dups: { $push: "$_id" },
+      count: { $sum: 1 }
+    }
+  }, {
+    $match: {
+      count: { $gt: 1 }
+    }
+  }]).exec());
+};
+
+PersonalDataSchema.statics.findDuplicatedActivityData = function () {
+  return Q(this.aggregate([{
+    $match: {
+      timestamp: { $exists : true },
+      source: 'activity'
+    }
+  }, {
+    $group: {
+      _id: {username: "$username", deviceId: "$deviceId", timestamp: "$timestamp"},
+      dups: { $push: "$_id" },
+      count: { $sum: 1 }
+    }
+  }, {
+    $match: {
+      count: { $gt: 1 }
+    }
+  }]).exec());
+};
+
+PersonalDataSchema.statics.findDuplicatedDisplayData = function () {
+  return Q(this.aggregate([{
+    $match: {
+      timestamp: { $exists : true },
+      source: 'display'
+    }
+  }, {
+    $group: {
+      _id: {username: "$username", deviceId: "$deviceId", timestamp: "$timestamp"},
+      dups: { $push: "$_id" },
+      count: { $sum: 1 }
+    }
+  }, {
+    $match: {
+      count: { $gt: 1 }
+    }
+  }]).exec());
+};
+
 PersonalDataSchema.statics.statPersonalDataSource = function () {
   return Q(this.aggregate(buildStatPersonalDataSourceQuery()).exec());
 };

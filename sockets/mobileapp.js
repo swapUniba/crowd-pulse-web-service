@@ -73,7 +73,7 @@ module.exports = function (io) {
     console.log(new Date() + ' - ' + 'A user connected: ' + socket.id);
 
     socket.on('login', function (data) {
-      console.log(new Date() + " - " + "deviceID: " + data.deviceId);
+      // console.log(new Date() + " - " + "deviceID: " + data.deviceId);
 
       if (data.deviceId) {
         var dbConnection = new CrowdPulse();
@@ -88,7 +88,7 @@ module.exports = function (io) {
                   console.log(new Date() + " - " + "Login failed");
                   socket.emit("login", RESPONSE["wrong_password"]);
                 } else {
-                  console.log(new Date() + " - " + "Login Ok");
+                  // console.log(new Date() + " - " + "Login Ok");
                   username = user.username;
 
                   if (data.client !== WEB_UI_CLIENT) {
