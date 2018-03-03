@@ -216,11 +216,15 @@ exports.endpoint = function() {
    * Get Facebook user likes.
    * Params:
    *    likesNumber - the number of likes to retrieve
+   *    dateFrom
+   *    dateTo
    */
   router.route('/facebook/likes')
     .post(function (req, res) {
       try {
         var likesNumber = req.body.likesNumber;
+        var dateFrom = req.body.dateFrom;
+        var dateTo = req.body.dateTo;
 
         // if the client do not specify a likes number to read then update the user likes
         if (!likesNumber) {
@@ -233,7 +237,7 @@ exports.endpoint = function() {
           // return the likes
           var dbConnection = new CrowdPulse();
           return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
-            return conn.Like.find({source: /facebook_.*/}).sort({date: -1}).limit(likesNumber);
+            return conn.Like.findLikes(dateFrom, dateTo, likesNumber);
           }).then(function (likes) {
             dbConnection.disconnect();
             res.status(200);
