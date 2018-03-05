@@ -281,5 +281,44 @@ module.exports = function() {
         });
     });
 
+  router.route('/stats/demographics/location')
+    .get(function(req, res) {
+      var dbConn = new CrowdPulse();
+      return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+        return conn.Profile.demographicsLocation();
+      })
+        .then(qSend(res))
+        .catch(qErr(res))
+        .finally(function() {
+          dbConn.disconnect();
+        });
+    });
+
+  router.route('/stats/demographics/gender')
+    .get(function(req, res) {
+      var dbConn = new CrowdPulse();
+      return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+        return conn.Profile.demographicsGender();
+      })
+        .then(qSend(res))
+        .catch(qErr(res))
+        .finally(function() {
+          dbConn.disconnect();
+        });
+    });
+
+  router.route('/stats/demographics/language')
+    .get(function(req, res) {
+      var dbConn = new CrowdPulse();
+      return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+        return conn.Profile.demographicsLanguage();
+      })
+        .then(qSend(res))
+        .catch(qErr(res))
+        .finally(function() {
+          dbConn.disconnect();
+        });
+    });
+
   return router;
 };

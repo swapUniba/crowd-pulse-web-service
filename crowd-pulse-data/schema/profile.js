@@ -244,4 +244,89 @@ ProfileSchema.statics.search = function(username) {
   return Q(model.aggregate(aggregations).exec());
 };
 
+ProfileSchema.statics.demographicsLocation = function () {
+  var aggregations = [
+    {
+      $match: {
+        'identities.configs.holisticProfileConfig': {$exists: true},
+        'identities.configs.holisticProfileConfig.shareDemographics': true,
+        'demographics.location': {$exists: true}
+      }
+    }
+  ];
+  return Q(this.aggregate(aggregations).exec()).then(function (profiles) {
+    var results = {};
+    if (profiles) {
+      profiles.forEach(function (profile) {
+        if (profile.demographics.location.length > 0) {
+          var location = profile.demographics.location.sort(function (a, b) {
+            return  b.timestamp - a.timestamp;
+          })[0].value;
+          if (location) {
+            results[location] = results[location] ? ++results[location] : 1;
+          }
+        }
+      });
+    }
+    return Q(results);
+  });
+};
+
+ProfileSchema.statics.demographicsGender = function () {
+  var aggregations = [
+    {
+      $match: {
+        'identities.configs.holisticProfileConfig': {$exists: true},
+        'identities.configs.holisticProfileConfig.shareDemographics': true,
+        'demographics.gender': {$exists: true}
+      }
+    }
+  ];
+  return Q(this.aggregate(aggregations).exec()).then(function (profiles) {
+    var results = {};
+    if (profiles) {
+      profiles.forEach(function (profile) {
+        if (profile.demographics.gender) {
+          var gender = profile.demographics.gender.value;
+          results[gender] = results[gender] ? ++results[gender] : 1;
+        }
+      });
+    }
+    return Q(results);
+  });
+};
+
+ProfileSchema.statics.demographicsLanguage = function () {
+  var aggregations = [
+    {
+      $match: {
+        'identities.configs.holisticProfileConfig': {$exists: true},
+        'identities.configs.holisticProfileConfig.shareDemographics': true,
+        'demographics.language': {$exists: true}
+      }
+    }
+  ];
+  return Q(this.aggregate(aggregations).exec()).then(function (profiles) {
+    var results = {};
+    if (profiles) {
+      profiles.forEach(function (profile) {
+        if (profile.demographics.language.length > 0) {
+          var sortedLanguages = profile.demographics.language.sort(function (a, b) {
+            return  b.timestamp - a.timestamp;
+          });
+
+          for (var i = 0; i < sortedLanguages.length; i++) {
+            results[sortedLanguages[i].value] = results[sortedLanguages[i].value] ? ++results[sortedLanguages[i].value] : 1;
+
+            if (sortedLanguages[i].timestamp !== sortedLanguages[0].timestamp) {
+              break;
+            }
+          }
+        }
+      });
+    }
+    return Q(results);
+  });
+};
+
 module.exports = ProfileSchema;
