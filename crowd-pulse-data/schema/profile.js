@@ -78,6 +78,14 @@ var ProfileSchema = builder(schemas.profile, {
         accessToken: String,
         expiresIn: Number,
         shareProfile: Boolean,
+        shareActivity: Boolean,
+        shareBody_Weight: Boolean,
+        shareDevices: Boolean,
+        shareFood: Boolean,
+        shareFriends: Boolean,
+        shareHeartRate: Boolean,
+        shareSleep: Boolean
+
       },
       twitterConfig: {
         twitterId: String,
