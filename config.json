@@ -14,6 +14,8 @@
   "session": {
     "secret": "secret-test-to-change-to-more-security"
   },
+  "androidAppBlackList": ["com.android.launcher3", "com.swapuniba.crowdpulse", "com.google.android.packageinstaller",
+    "com.android.settings", "com.google.android.setupwizard", "com.android.systemui"],
   "batch": {
     "cleaningPersonalDataTimeout": "*/10 * * * *",
     "crowdPulseRunTimeout": "30 0 * * *",

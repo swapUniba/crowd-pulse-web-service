@@ -530,7 +530,7 @@ var updateFriends = function(username) {
             while (i < friends.users.length) {
               friendsToSave.push({
                 username: username,
-                contactId: friends.users[i].id_str,
+                contactId: friends.users[i].screen_name,
                 contactName: friends.users[i].name,
                 source: 'twitter',
                 type: api === API_FOLLOWINGS? 'following': 'followers',
