@@ -175,7 +175,7 @@ PersonalDataSchema.statics.statDisplayBar = function (from, to) {
       while (i < dataArray.length - 1) {
         aggregate.push({
             time: dataArray[i + 1].timestamp - dataArray[i].timestamp,
-            state: dataArray[i].state
+            state: dataArray[i + 1].state
           }
         );
         i = i + 1;

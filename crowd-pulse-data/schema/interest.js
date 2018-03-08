@@ -19,12 +19,12 @@ InterestSchema.statics.newFromObject = function(object) {
   return new this(object);
 };
 
-InterestSchema.statics.statWordCloud = function (from, to, source) {
-  return Q(this.aggregate(buildStatWordCloud(from, to, source)).exec());
+InterestSchema.statics.statWordCloud = function (from, to, source, limitResults) {
+  return Q(this.aggregate(buildStatWordCloud(from, to, source, limitResults)).exec());
 };
 
 
-var buildStatWordCloud = function(from, to, source) {
+var buildStatWordCloud = function(from, to, source, limitResults) {
   var filter = undefined;
 
   from = new Date(from);
@@ -79,6 +79,12 @@ var buildStatWordCloud = function(from, to, source) {
   }, {
     $limit: 100
   });
+
+  if (limitResults) {
+    aggregations.push({
+      $limit: parseInt(limitResults)
+    });
+  }
 
   return aggregations;
 };
