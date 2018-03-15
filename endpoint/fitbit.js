@@ -131,7 +131,6 @@ exports.endpoint = function() {
             res.status(200);
             res.json({auth: true, user: profile});
           } else {
-            console.log("entrato nell' errore 1");
             res.status(400);
             res.json({auth: true});
           }
@@ -278,19 +277,29 @@ exports.endpoint = function() {
    * Get Fitbit user Friends.
    */
   router.route('/fitbit/friends')
-    .get(function (req, res) {
+    .post(function (req, res) {
       try {
-        updateUserFriends(req.session.username, function (friends){
+        var friendsNumber = req.body.friendsNumber;
 
-          if (friends)
-          {
+        // if the client do not specify a friends number to read then update the user friends
+        if (!friendsNumber) {
+          updateUserFriends(req.session.username).then(function () {
             res.status(200);
-            res.json({auth: true, user: profile});
-          } else {
-            res.status(400);
             res.json({auth: true});
-          }
-        });
+          });
+        } else {
+
+          // return the friends
+          var dbConnection = new CrowdPulse();
+          return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
+            return conn.Connection.find({source: /fitbit/}).limit(friendsNumber);
+          }).then(function (friends) {
+            dbConnection.disconnect();
+            res.status(200);
+            res.json({auth: true, friends: friends});
+          });
+        }
+
       } catch(err) {
         console.log(err);
         res.sendStatus(500);
@@ -804,12 +813,6 @@ var updateUserFood = function(username, callback) {
  */
 var updateUserFriends = function(username, callback) {
 
-  // default empty callback
-  if (!callback)
-  {
-    callback = function () {}
-  }
-
   var dbConnection = new CrowdPulse();
   return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
     return conn.Profile.findOne({username: username}, function (err, profile) {
@@ -822,56 +825,42 @@ var updateUserFriends = function(username, callback) {
           json: true
         };
 
-      if (fitbitConfig.accessToken)
-      {
+      if (fitbitConfig.accessToken) {
         // true if it is the first time user requests fitbit profile
         var firstRequest = !profile.identities.configs.fitbitConfig.fitbitId;
+        var share = fitbitConfig.shareFriends;
+
 
         // retrieve profile information about the current user
-        request.get(params, function(err, response, userFriends)
-        {
+        request.get(params, function (err, response, userFriends) {
           console.log(userFriends);
 
-          if (response.statusCode !== 200)
-          {
+          if (response.statusCode !== 200) {
             return err;
           }
 
-          if (firstRequest)
-          {
+          if (firstRequest) {
             // share default value
             fitbitConfig.shareFriends = true;
           }
-          /*
-           var i = 0;
-           while (i < userActivity.activities.length) {
-           profile.identities.configs.fitbitConfig.activities.push({
-           activityId: userActivity.activities[i].activityId,
-           calories: userActivity.activities[i].calories,
-           description: userActivity.activities[i].description,
-           distance: userActivity.activities[i].distance,
-           duration: userActivity.activities[i].duration,
-           startTime: userActivity.activities[i].startTime,
-           steps: userActivity.activities[i].steps
-           });
-           i++;
-           }
 
-           profile.save().then(function () {
-           console.log("Fitbit profile of " + username + " updated at " + new Date());
-           dbConnection.disconnect();
-           });
+          var i = 0;
+          var friendsToSave = [];
+          while (i < userFriends.friends.length) {
+            friendsToSave.push({
+              username: userFriends.friends[i].user.displayName,
+              contactId: userFriends.friends[i].user.encodedId,
+              contactName: userFriends.friends[i].user.fullName,
+              source: 'fitbit',
+              share: share
+            });
+            i++;
+          }
 
-           // update demographics data
-           if (firstRequest) {
-           batch.updateDemographicsForUser(profile.username);
-           }
-
-           callback(profile);*/
+          storeFriends(friendsToSave, username).then(function () {
+            storeFriends(friendsToSave, databaseName.globalData);
+          });
         });
-      } else {
-        callback(null);
-        dbConnection.disconnect();
       }
     });
   });
@@ -1057,6 +1046,43 @@ var updateUserSleep = function(username, callback) {
  */
 
 //TODO
+
+
+/**
+ * Store friends in the MongoDB database
+ * @param friends
+ * @param databaseName
+ */
+var storeFriends = function(friends, databaseName) {
+  var dbConnection = new CrowdPulse();
+
+  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+    if (friends.length <= 0) {
+      return dbConnection.disconnect();
+    }
+
+    // loop function to insert friends data synchronously
+    (function loop (i) {
+      var friend = friends[i];
+      conn.Connection.findOneAndUpdate({
+        username: friend.username,
+        source: 'fitbit',
+        contactId: friend.contactId
+      }, friend, {upsert: true}, function () {
+        i++;
+        if (i >= friends.length) {
+
+          console.log(friends.length + " Fitbit friends for " + friend.username + " saved or updated into " + databaseName);
+          return dbConnection.disconnect();
+        } else {
+          loop(i);
+        }
+      });
+    })(0);
+
+  });
+};
+
 
 
 

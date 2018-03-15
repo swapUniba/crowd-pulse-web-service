@@ -8,7 +8,6 @@ var Mixed = mongoose.Schema.Types.Mixed;
  */
 var fitbitProfileSchema = {
   fitbitId: String,
-  aboutMe:String,
   avatar:String,
   city:String,
   country:String,
@@ -17,8 +16,11 @@ var fitbitProfileSchema = {
   fullName:String,
   gender:String,
   height:Number,
+  heightUnit:String,
   state:String,
-  weight:Number
+  weight:Number,
+  weightUnit:String,
+  locale:String
 };
 
 module.exports = fitbitProfileSchema;
