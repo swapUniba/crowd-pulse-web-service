@@ -134,6 +134,13 @@ module.exports = function() {
       });
     });
 
+  router.route('/stats/emotion/timeline')
+    .get(function(req, res) {
+      return handleGenericStat(req, res, function(conn, type, terms, from, to, sentiment, language, lat, lng, ray) {
+        return conn.Message.statEmotionTimeline(type, terms, from, to, sentiment, language, lat, lng, ray);
+      });
+    });
+
   router.route('/stats/message/timeline')
   // /api/stats/message/timeline?db=sexism&from=2015-10-11&to=2015-10-13&type=tag&terms=aword&terms=anotherword
     .get(function(req, res) {
@@ -253,6 +260,71 @@ module.exports = function() {
       var dbConn = new CrowdPulse();
       return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
         return conn.PersonalData.statDisplayBar(req.query.from, req.query.to);
+      })
+        .then(qSend(res))
+        .catch(qErr(res))
+        .finally(function() {
+          dbConn.disconnect();
+        });
+    });
+
+  router.route('/stats/personal_data/activity')
+    .get(function(req, res) {
+      var dbConn = new CrowdPulse();
+      return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+        return conn.PersonalData.statActivityRawData(req.query.from, req.query.to);
+      })
+        .then(qSend(res))
+        .catch(qErr(res))
+        .finally(function() {
+          dbConn.disconnect();
+        });
+    });
+
+  router.route('/stats/interests/wordcloud')
+    .get(function(req, res) {
+      var dbConn = new CrowdPulse();
+      return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+        return conn.Interest.statWordCloud(req.query.from, req.query.to, req.query.source, req.query.limitResults);
+      })
+        .then(qSend(res))
+        .catch(qErr(res))
+        .finally(function() {
+          dbConn.disconnect();
+        });
+    });
+
+  router.route('/stats/demographics/location')
+    .get(function(req, res) {
+      var dbConn = new CrowdPulse();
+      return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+        return conn.Profile.demographicsLocation();
+      })
+        .then(qSend(res))
+        .catch(qErr(res))
+        .finally(function() {
+          dbConn.disconnect();
+        });
+    });
+
+  router.route('/stats/demographics/gender')
+    .get(function(req, res) {
+      var dbConn = new CrowdPulse();
+      return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+        return conn.Profile.demographicsGender();
+      })
+        .then(qSend(res))
+        .catch(qErr(res))
+        .finally(function() {
+          dbConn.disconnect();
+        });
+    });
+
+  router.route('/stats/demographics/language')
+    .get(function(req, res) {
+      var dbConn = new CrowdPulse();
+      return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+        return conn.Profile.demographicsLanguage();
       })
         .then(qSend(res))
         .catch(qErr(res))

@@ -17,6 +17,12 @@ const WEB_UI_CLIENT = "web-ui";
 // source string type used for filtering data
 const SOURCE_CONTACT = "contact";
 const SOURCE_ACCOUNTS = "accounts";
+const SOURCE_APP_INFO = "appinfo";
+const SOURCE_NET_STATS = "netstats";
+const SOURCE_DISPLAY = "display";
+const SOURCE_GPS = "gps";
+const SOURCE_ACTIVITY = "activity";
+
 
 const RESPONSE = {
   "user_not_found": {
@@ -67,7 +73,7 @@ module.exports = function (io) {
     console.log(new Date() + ' - ' + 'A user connected: ' + socket.id);
 
     socket.on('login', function (data) {
-      console.log(new Date() + " - " + "deviceID: " + data.deviceId);
+      // console.log(new Date() + " - " + "deviceID: " + data.deviceId);
 
       if (data.deviceId) {
         var dbConnection = new CrowdPulse();
@@ -82,7 +88,7 @@ module.exports = function (io) {
                   console.log(new Date() + " - " + "Login failed");
                   socket.emit("login", RESPONSE["wrong_password"]);
                 } else {
-                  console.log(new Date() + " - " + "Login Ok");
+                  // console.log(new Date() + " - " + "Login Ok");
                   username = user.username;
 
                   if (data.client !== WEB_UI_CLIENT) {
@@ -241,15 +247,33 @@ module.exports = function (io) {
             }
           });
 
-          storeContact(contactData, data.username);
-          storeContact(contactData, DB_GLOBAL_DATA);
-          storeAccount(accountData, data.deviceId);
-          storePersonalData(personalData, data.username);
-          storePersonalData(personalData, DB_GLOBAL_DATA);
+          var dbConnection = new CrowdPulse();
+          return dbConnection.connect(config.database.url, DB_PROFILES).then(function(conn) {
+            return conn.Profile.findOne({'identities.devices': {$elemMatch: {deviceId: data.deviceId}}}, function (err, user) {
+              dbConnection.disconnect();
 
-          console.log(new Date() + " - Send data completed for " + data.deviceId);
-          RESPONSE["data_acquired"].dataIdentifier = data.dataIdentifier;
-          io.in(data.deviceId).emit("send_data", RESPONSE["data_acquired"]);
+              var deviceConfig;
+              if (user && user.identities.configs.devicesConfig && user.identities.configs.devicesConfig.length) {
+
+                // search the configuration by device ID
+                for (var i = 0; i < user.identities.configs.devicesConfig.length && !deviceConfig; i++) {
+                  if (data.deviceId === user.identities.configs.devicesConfig[i].deviceId) {
+                    deviceConfig = user.identities.configs.devicesConfig[i];
+                  }
+                }
+              }
+
+              storeContact(contactData, data.username, deviceConfig);
+              storeContact(contactData, DB_GLOBAL_DATA, deviceConfig);
+              storeAccount(accountData, data.deviceId);
+              storePersonalData(personalData, data.username, deviceConfig);
+              storePersonalData(personalData, DB_GLOBAL_DATA, deviceConfig);
+
+              console.log(new Date() + " - Send data completed for " + data.deviceId);
+              RESPONSE["data_acquired"].dataIdentifier = data.dataIdentifier;
+              io.in(data.deviceId).emit("send_data", RESPONSE["data_acquired"]);
+            });
+          });
 
         } else {
           console.log(new Date() + ' - Data not recognized');
@@ -272,8 +296,9 @@ module.exports = function (io) {
    * Store contact in the MongoDB database
    * @param contactData
    * @param databaseName
+   * @param deviceConfig
    */
-  var storeContact = function (contactData, databaseName) {
+  var storeContact = function (contactData, databaseName, deviceConfig) {
     if (contactData && contactData.length > 0) {
       var dbConnection = new CrowdPulse();
       dbConnection.connect(config.database.url, databaseName).then(function (conn) {
@@ -281,6 +306,13 @@ module.exports = function (io) {
         // loop function to insert contact data synchronously
         (function loop (i) {
           var contact = contactData[i];
+
+          if (deviceConfig) {
+            contact.share = deviceConfig.shareContact === '1';
+          } else {
+            contact.share = false;
+          }
+
           conn.Connection.findOneAndUpdate({
             deviceId: contact.deviceId,
             username: contact.username,
@@ -354,13 +386,39 @@ module.exports = function (io) {
    * Store generic personal data in the MongoDB database
    * @param personalData
    * @param databaseName
+   * @param deviceConfig
    */
-  var storePersonalData = function (personalData, databaseName) {
+  var storePersonalData = function (personalData, databaseName, deviceConfig) {
     if (personalData && personalData.length > 0) {
       var dbConnection = new CrowdPulse();
       dbConnection.connect(config.database.url, databaseName).then(function (conn) {
         var elementSaved = 0;
         personalData.forEach(function (element) {
+
+          if (deviceConfig) {
+            switch (element.source) {
+              case SOURCE_APP_INFO:
+                element.share = deviceConfig.shareAppInfo === '1';
+                break;
+              case SOURCE_NET_STATS:
+                element.share = deviceConfig.shareNetStats === '1';
+                break;
+              case SOURCE_ACTIVITY:
+                element.share = deviceConfig.shareActivity === '1';
+                break;
+              case SOURCE_GPS:
+                element.share = deviceConfig.shareGPS === '1';
+                break;
+              case SOURCE_DISPLAY:
+                element.share = deviceConfig.shareDisplay === '1';
+                break;
+              default:
+                element.share = false;
+                break;
+            }
+          } else {
+            element.share = false;
+          }
 
           conn.PersonalData.newFromObject(element).save().then(function () {
             elementSaved++;
@@ -414,7 +472,7 @@ module.exports = function (io) {
       // update GPS
       var dbConnectionGPS = new CrowdPulse();
       dbConnectionGPS.connect(config.database.url, databaseName).then(function (conn) {
-        conn.PersonalData.update({username: username, deviceId: deviceId, source: 'gps'},
+        conn.PersonalData.update({username: username, deviceId: deviceId, source: SOURCE_GPS},
           {$set: {share: share}}, {multi: true}, function (err, numAffected) {
             if (err) {
               console.log(err);
@@ -433,7 +491,7 @@ module.exports = function (io) {
       // update activity
       var dbConnectionActivity = new CrowdPulse();
       dbConnectionActivity.connect(config.database.url, databaseName).then(function (conn) {
-        conn.PersonalData.update({username: username, deviceId: deviceId, source: 'activity'},
+        conn.PersonalData.update({username: username, deviceId: deviceId, source: SOURCE_ACTIVITY},
           {$set: {share: share}}, {multi: true}, function (err, numAffected) {
             if (err) {
               console.log(err);
@@ -452,7 +510,7 @@ module.exports = function (io) {
       // update new stats
       var dbConnectionNetStats = new CrowdPulse();
       dbConnectionNetStats.connect(config.database.url, databaseName).then(function (conn) {
-        conn.PersonalData.update({username: username, deviceId: deviceId, source: 'netstats'},
+        conn.PersonalData.update({username: username, deviceId: deviceId, source: SOURCE_NET_STATS},
           {$set: {share: share}}, {multi: true}, function (err, numAffected) {
             if (err) {
               console.log(err);
@@ -471,7 +529,7 @@ module.exports = function (io) {
       // update appInfo
       var dbConnectionAppInfo = new CrowdPulse();
       dbConnectionAppInfo.connect(config.database.url, databaseName).then(function (conn) {
-        conn.PersonalData.update({username: username, deviceId: deviceId, source: 'appinfo'},
+        conn.PersonalData.update({username: username, deviceId: deviceId, source: SOURCE_APP_INFO},
           {$set: {share: share}}, {multi: true}, function (err, numAffected) {
             if (err) {
               console.log(err);
@@ -490,7 +548,7 @@ module.exports = function (io) {
       // update display
       var dbConnectionDisplay = new CrowdPulse();
       dbConnectionDisplay.connect(config.database.url, databaseName).then(function (conn) {
-        conn.PersonalData.update({username: username, deviceId: deviceId, source: 'display'},
+        conn.PersonalData.update({username: username, deviceId: deviceId, source: SOURCE_DISPLAY},
           {$set: {share: share}}, {multi: true}, function (err, numAffected) {
             if (err) {
               console.log(err);

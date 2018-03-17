@@ -4,6 +4,9 @@ var Q = require('q');
 var mongoose = require('mongoose');
 var builder = require('./schemaBuilder');
 var schemas = require('./schemaName');
+var config = require('./../../config.json');
+
+const APPS_BLACKLIST = config.androidAppBlackList;
 
 var PersonalDataSchema = builder(schemas.personalData, {
   id: mongoose.Schema.ObjectId,
@@ -40,6 +43,101 @@ PersonalDataSchema.statics.newFromObject = function(object) {
   return new this(object);
 };
 
+PersonalDataSchema.statics.findDuplicatedAppInfoData = function () {
+  return Q(this.aggregate([{
+    $match: {
+      timestamp: { $exists : true },
+      source: 'appinfo'
+    }
+  }, {
+    $group: {
+      _id: {username: "$username", deviceId: "$deviceId", timestamp: "$timestamp", packageName: "$packageName"},
+      dups: { $push: "$_id" },
+      count: { $sum: 1 }
+    }
+  }, {
+    $match: {
+      count: { $gt: 1 }
+    }
+  }]).exec());
+};
+
+PersonalDataSchema.statics.findDuplicatedNetStatsData = function () {
+  return Q(this.aggregate([{
+    $match: {
+      timestamp: { $exists : true },
+      source: 'netstats'
+    }
+  }, {
+    $group: {
+      _id: {username: "$username", deviceId: "$deviceId", timestamp: "$timestamp", networkType: "$networkType"},
+      dups: { $push: "$_id" },
+      count: { $sum: 1 }
+    }
+  }, {
+    $match: {
+      count: { $gt: 1 }
+    }
+  }]).exec());
+};
+
+PersonalDataSchema.statics.findDuplicatedGPSData = function () {
+  return Q(this.aggregate([{
+    $match: {
+      timestamp: { $exists : true },
+      source: 'gps'
+    }
+  }, {
+    $group: {
+      _id: {username: "$username", deviceId: "$deviceId", timestamp: "$timestamp"},
+      dups: { $push: "$_id" },
+      count: { $sum: 1 }
+    }
+  }, {
+    $match: {
+      count: { $gt: 1 }
+    }
+  }]).exec());
+};
+
+PersonalDataSchema.statics.findDuplicatedActivityData = function () {
+  return Q(this.aggregate([{
+    $match: {
+      timestamp: { $exists : true },
+      source: 'activity'
+    }
+  }, {
+    $group: {
+      _id: {username: "$username", deviceId: "$deviceId", timestamp: "$timestamp"},
+      dups: { $push: "$_id" },
+      count: { $sum: 1 }
+    }
+  }, {
+    $match: {
+      count: { $gt: 1 }
+    }
+  }]).exec());
+};
+
+PersonalDataSchema.statics.findDuplicatedDisplayData = function () {
+  return Q(this.aggregate([{
+    $match: {
+      timestamp: { $exists : true },
+      source: 'display'
+    }
+  }, {
+    $group: {
+      _id: {username: "$username", deviceId: "$deviceId", timestamp: "$timestamp"},
+      dups: { $push: "$_id" },
+      count: { $sum: 1 }
+    }
+  }, {
+    $match: {
+      count: { $gt: 1 }
+    }
+  }]).exec());
+};
+
 PersonalDataSchema.statics.statPersonalDataSource = function () {
   return Q(this.aggregate(buildStatPersonalDataSourceQuery()).exec());
 };
@@ -64,6 +162,11 @@ PersonalDataSchema.statics.statNetStatBar = function (from, to) {
   return Q(this.aggregate(buildStatNetStatBar(from, to)).exec());
 };
 
+PersonalDataSchema.statics.statActivityRawData = function (from, to) {
+  return Q(this.aggregate(buildActivityFilterQuery(from, to)).exec());
+
+};
+
 PersonalDataSchema.statics.statDisplayBar = function (from, to) {
   return Q(this.aggregate(buildStatDisplayBar(from, to)).exec())
     .then(function(dataArray) {
@@ -72,7 +175,7 @@ PersonalDataSchema.statics.statDisplayBar = function (from, to) {
       while (i < dataArray.length - 1) {
         aggregate.push({
             time: dataArray[i + 1].timestamp - dataArray[i].timestamp,
-            state: dataArray[i].state
+            state: dataArray[i + 1].state
           }
         );
         i = i + 1;
@@ -97,6 +200,43 @@ PersonalDataSchema.statics.statDisplayBar = function (from, to) {
       }
       return Q(result);
     });
+};
+
+var buildActivityFilterQuery = function (from, to) {
+  var filter = undefined;
+
+  from = new Date(from);
+  to = new Date(to);
+  var hasFrom = !isNaN(from.getDate());
+  var hasTo = !isNaN(to.getDate());
+
+  if (hasFrom || hasTo) {
+    filter = {$match: {}};
+
+    if (hasFrom || hasTo) {
+      filter.$match['timestamp'] = {};
+      if (hasFrom) {
+        filter.$match['timestamp']['$gte'] = from.getTime();
+      }
+      if (hasTo) {
+        filter.$match['timestamp']['$lte'] = to.getTime();
+      }
+    }
+  }
+
+  var aggregations = [];
+
+  if (filter) {
+    aggregations.push(filter);
+  }
+
+  aggregations.push({
+    $match: {
+      source: "activity"
+    }
+  });
+
+  return aggregations;
 };
 
 var buildStatPersonalDataSourceQuery = function () {
@@ -207,6 +347,15 @@ var buildStatAppInfoBar = function (from, to, limitResults, groupByCategory) {
     aggregations.push(filter);
   }
 
+  // black list some apps (eg. system app)
+  APPS_BLACKLIST.forEach(function (app) {
+    aggregations.push({
+      $match: {
+        packageName: {$ne: app}
+      }
+    });
+  });
+
   // boolean value is typed as string
   if (groupByCategory === "true") {
     aggregations.push({
@@ -290,6 +439,15 @@ var buildStatAppInfoTimeline = function (from, to) {
   if (filter) {
     aggregations.push(filter);
   }
+
+  // black list some apps (eg. system app)
+  APPS_BLACKLIST.forEach(function (app) {
+    aggregations.push({
+      $match: {
+        packageName: {$ne: app}
+      }
+    });
+  });
 
   aggregations.push({
     $match: {
