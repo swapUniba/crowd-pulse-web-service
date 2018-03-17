@@ -18,12 +18,14 @@ const API_ACCESS_TOKEN = 'https://api.fitbit.com/oauth2/token';
 const API_LOGIN_DIALOG = 'https://www.fitbit.com/oauth2/authorize?';
 const API_USER_DATA = 'https://api.fitbit.com/1/user/-/profile.json';
 const API_USER_ACTIVITY_DATA = 'https://api.fitbit.com/1/user/-/activities/steps/date/today/1y.json';
-const API_USER_BODY_AND_WEIGHT_DATA = 'https://api.fitbit.com/1/user/-/body/weight/date/today/1y.json';
+const API_USER_BODY_AND_WEIGHT_DATA = 'https://api.fitbit.com/1/user/-/body/log/weight/date/today/1y.json';
+const API_USER_BODY_AND_FAT_DATA = 'https://api.fitbit.com/1/user/-/body/log/fat/date/today/1y.json';
 const API_USER_HEARTRATE_DATA = 'https://api.fitbit.com/1/user/-/activities/heart/date/today/1m.json';
 const API_USER_DEVICES_DATA = 'https://api.fitbit.com/1/user/-/devices.json';
 const API_USER_FOOD_DATA = 'https://api.fitbit.com/1/user/-/foods/log/caloriesIn/date/today/1y.json';
 const API_USER_FRIENDS_DATA = 'https://api.fitbit.com/1/user/-/friends.json';
-const API_USER_SLEEP_DATA = 'https://api.fitbit.com/1.2/user/-/sleep/date/2018-01-01/2018-03-07.json';
+const API_USER_SLEEP_DATA = 'https://api.fitbit.com/1.2/user/-/sleep/date/2017-12-01/2017-12-31.json';
+
 
 
 
@@ -336,19 +338,29 @@ exports.endpoint = function() {
    * Get Fitbit user Sleep.
    */
   router.route('/fitbit/sleep')
-    .get(function (req, res) {
+    .post(function (req, res) {
       try {
-        updateUserSleep(req.session.username, function (sleep){
+        var sleepNumber = req.body.sleepNumber;
 
-          if (sleep)
-          {
+        // if the client do not specify a sleep number to read then update the user sleep
+        if (!sleepNumber) {
+          updateUserSleep(req.session.username).then(function () {
             res.status(200);
-            res.json({auth: true, user: profile});
-          } else {
-            res.status(400);
             res.json({auth: true});
-          }
-        });
+          });
+        } else {
+
+          // return the sleep
+          var dbConnection = new CrowdPulse();
+          return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
+            return conn.PersonalData.find({source: /fitbit/}).limit(sleepNumber);
+          }).then(function (sleep) {
+            dbConnection.disconnect();
+            res.status(200);
+            res.json({auth: true, sleep: sleep});
+          });
+        }
+
       } catch(err) {
         console.log(err);
         res.sendStatus(500);
@@ -358,7 +370,7 @@ exports.endpoint = function() {
 
 
   /**
-   * Delete Fitbit information account, including posts and likes.
+   * Delete Fitbit information account.
    */
   router.route('/fitbit/delete')
     .delete(function (req, res) {
@@ -366,8 +378,14 @@ exports.endpoint = function() {
         var dbConnection = new CrowdPulse();
         return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
           return conn.Profile.findOne({username: req.session.username}, function (err, profile) {
-            if (profile)
-            {
+            if (profile) {
+
+              var fitbitId = profile.identities.fitbit.fitbitId;
+              deleteSleep(fitbitId, req.session.username);
+              deleteSleep(fitbitId, databaseName.globalData);
+              deleteFriend(req.session.username, req.session.username);
+              deleteFriend(req.session.username, databaseName.globalData);
+
               profile.identities.fitbit = undefined;
               profile.identities.configs.fitbitConfig = undefined;
               profile.save();
@@ -833,7 +851,6 @@ var updateUserFriends = function(username, callback) {
 
         // retrieve profile information about the current user
         request.get(params, function (err, response, userFriends) {
-          console.log(userFriends);
 
           if (response.statusCode !== 200) {
             return err;
@@ -852,7 +869,7 @@ var updateUserFriends = function(username, callback) {
               contactId: userFriends.friends[i].user.encodedId,
               contactName: userFriends.friends[i].user.fullName,
               source: 'fitbit',
-              share: share
+              share: true
             });
             i++;
           }
@@ -956,74 +973,66 @@ var updateUserHeartRate = function(username, callback) {
  */
 var updateUserSleep = function(username, callback) {
 
-  // default empty callback
-  if (!callback)
-  {
-    callback = function () {}
-  }
-
   var dbConnection = new CrowdPulse();
   return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
     return conn.Profile.findOne({username: username}, function (err, profile) {
-      var fitbitConfig = profile.identities.configs.fitbitConfig;
-
-      var params =
-        {
-          url: API_USER_SLEEP_DATA,
-          headers: { 'Authorization': 'Bearer ' + fitbitConfig.accessToken },
-          json: true
-        };
-
-      if (fitbitConfig.accessToken)
-      {
-        // true if it is the first time user requests fitbit profile
-        var firstRequest = !profile.identities.configs.fitbitConfig.fitbitId;
-
-        // retrieve profile information about the current user
-        request.get(params, function(err, response, userSleep)
-        {
-          console.log(userSleep);
-
-          if (response.statusCode !== 200)
-          {
-            return err;
-          }
-
-          if (firstRequest)
-          {
-            // share default value
-            fitbitConfig.shareSleep = true;
-          }
-          /*
-           var i = 0;
-           while (i < userActivity.activities.length) {
-           profile.identities.configs.fitbitConfig.activities.push({
-           activityId: userActivity.activities[i].activityId,
-           calories: userActivity.activities[i].calories,
-           description: userActivity.activities[i].description,
-           distance: userActivity.activities[i].distance,
-           duration: userActivity.activities[i].duration,
-           startTime: userActivity.activities[i].startTime,
-           steps: userActivity.activities[i].steps
-           });
-           i++;
-           }
-
-           profile.save().then(function () {
-           console.log("Fitbit profile of " + username + " updated at " + new Date());
-           dbConnection.disconnect();
-           });
-
-           // update demographics data
-           if (firstRequest) {
-           batch.updateDemographicsForUser(profile.username);
-           }
-
-           callback(profile);*/
-        });
-      } else {
-        callback(null);
+      if (profile) {
         dbConnection.disconnect();
+
+        var fitbitConfig = profile.identities.configs.fitbitConfig;
+
+        var params =
+          {
+            url: API_USER_SLEEP_DATA,
+            headers: {'Authorization': 'Bearer ' + fitbitConfig.accessToken},
+            json: true
+          };
+
+        if (fitbitConfig.accessToken) {
+          // true if it is the first time user requests fitbit profile
+          var firstRequest = !profile.identities.configs.fitbitConfig.fitbitId;
+          var share = fitbitConfig.shareSleep;
+
+
+          // retrieve profile information about the current user
+          request.get(params, function (err, response, userSleep) {
+            console.log(userSleep);
+            if (response.statusCode !== 200) {
+              return err;
+            }
+
+            if (firstRequest) {
+              // share default value
+              fitbitConfig.shareSleep = true;
+            }
+
+            var i = 0;
+            var sleepToSave = [];
+            while (i < userSleep.sleep.length) {
+              console.log('dentro il while');
+
+              sleepToSave.push({
+                deviceId: 'fitbit',
+                username: username,
+                timestamp: new Date(userSleep.sleep[i].startTime).getTime(),
+                duration: userSleep.sleep[i].duration,
+                efficiency: userSleep.sleep[i].efficiency,
+                minutesAfterWakeup: userSleep.sleep[i].minutesAfterWakeup,
+                minutesAsleep: userSleep.sleep[i].minutesAsleep,
+                minutesAwake: userSleep.sleep[i].minutesAwake,
+                minutesToFallAsleep: userSleep.sleep[i].minutesToFallAsleep,
+                timeInBed: userSleep.sleep[i].timeInBed,
+                source: 'fitbit-sleep',
+                share: true
+              });
+              i++;
+            }
+
+            storeSleep(sleepToSave, username).then(function () {
+              storeSleep(sleepToSave, databaseName.globalData);
+            });
+          });
+        }
       }
     });
   });
@@ -1049,13 +1058,12 @@ var updateUserSleep = function(username, callback) {
 
 
 /**
- * Store friends in the MongoDB database
- * @param friends
- * @param databaseName
- */
+* Store friends in the MongoDB database
+* @param friends
+* @param databaseName
+*/
 var storeFriends = function(friends, databaseName) {
   var dbConnection = new CrowdPulse();
-
   return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
     if (friends.length <= 0) {
       return dbConnection.disconnect();
@@ -1086,6 +1094,84 @@ var storeFriends = function(friends, databaseName) {
 
 
 
+/**
+ * Store sleep in the MongoDB database
+ * @param sleep
+ * @param databaseName
+ */
+var storeSleep = function(sleeps, databaseName) {
+  console.log('dentro store');
+
+  var dbConnection = new CrowdPulse();
+  var sleepSaved = 0;
+  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+    if (sleeps.length <= 0) {
+      return dbConnection.disconnect();
+    }
+    sleeps.forEach(function (sleep) {
+      console.log('dentro foreach');
+      console.log(sleep);
+
+      return conn.PersonalData.newFromObject(sleep).save().then(function () {
+        sleepSaved++;
+        console.log('dentro personal Data');
+
+        if (sleepSaved >= sleeps.length) {
+          console.log(sleeps.length + " sleeps from Fitbit saved in " + databaseName + " at " + new Date());
+          return dbConnection.disconnect();
+        }
+      });
+    });
+  });
+};
+
+
+
+/**
+ * Delete sleep stored in the MongoDB database
+ * @param username
+ * @param databaseName
+ */
+var deleteSleep = function(username, databaseName) {
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+    return conn.PersonalData.deleteMany({username: username, source: /fitbit.*/}, function (err) {
+      if (err) {
+        console.log(err);
+      } else {
+        console.log("Fitbit friends deleted from " + databaseName + " at " + new Date());
+      }
+      return dbConnection.disconnect();
+    });
+  });
+};
+
+
+
+
+
+/**
+ * Delete friends stored in the MongoDB database
+ * @param username
+ * @param databaseName
+ */
+var deleteFriend = function(username, databaseName) {
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+    return conn.Connection.deleteMany({username: username, source: /fitbit.*/}, function (err) {
+      if (err) {
+        console.log(err);
+      } else {
+        console.log("Fitbit friends deleted from " + databaseName + " at " + new Date());
+      }
+      return dbConnection.disconnect();
+    });
+  });
+};
+
+
+
+
 exports.updateUserProfile = updateUserProfile;
 exports.updateUserActivity = updateUserActivity;
 exports.updateUserBodyWeight = updateUserBodyWeight;
@@ -1094,14 +1180,3 @@ exports.updateUserFriends = updateUserFriends;
 exports.updateUserDevices = updateUserDevices;
 exports.updateUserHeartRate = updateUserHeartRate;
 exports.updateUserSleep = updateUserSleep;
-
-
-
-
-
-
-
-/* exports.updatePosts = updatePosts;
-exports.updateLikes = updateLikes;
-exports.updateFriends = updateFriends;
-};*/
