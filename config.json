@@ -6,7 +6,7 @@
   },
   "crowd-pulse": {
     "main": "/opt/crowd-pulse/build/install/crowd-pulse/bin/crowd-pulse",
-    "projects": []
+    "projects": ["complete-pipeline", "app-categorize", "personality-detector", "empathy-detector"]
   },
   "logs": {
     "path": "/opt/crowd-pulse/logs"
