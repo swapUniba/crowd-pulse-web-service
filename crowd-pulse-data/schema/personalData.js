@@ -48,7 +48,17 @@ var PersonalDataSchema = builder(schemas.personalData, {
   peak_minutes: Number,
   cardio_minutes: Number,
   fatBurn_minutes: Number,
-  outOfRange_minutes: Number
+  outOfRange_minutes: Number,
+  //Food
+  caloriesIn: Number,
+  calories: Number,
+  carbs: Number,
+  fat: Number,
+  fiber: Number,
+  protein: Number,
+  sodium: Number,
+  water: Number
+
 });
 
 
