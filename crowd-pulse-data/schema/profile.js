@@ -7,6 +7,7 @@ var builder = require('./schemaBuilder');
 var TwitterProfileSchema = require('./../schema/twitterProfile');
 var FacebookProfileSchema = require('./../schema/facebookProfile');
 var LinkedInProfileSchema = require('./../schema/linkedinProfile');
+var InstagramProfileSchema = require('./../schema/instagramProfile');
 var DemographicsSchema = require('./demographic');
 
 var schemas = require('./schemaName');
@@ -34,6 +35,7 @@ var ProfileSchema = builder(schemas.profile, {
     twitter: TwitterProfileSchema,
     facebook: FacebookProfileSchema,
     linkedIn: LinkedInProfileSchema,
+    instagram: InstagramProfileSchema,
     devices: [
       {
         deviceId: String,
@@ -85,6 +87,12 @@ var ProfileSchema = builder(schemas.profile, {
         accessToken: String,
         expiresIn: Number,
         shareProfile: Boolean
+      },
+      instagramConfig: {
+        instagramId: String,
+        accessToken: String,
+        shareProfile: Boolean,
+        shareMessages: Boolean
       },
       devicesConfig: [
         {
