@@ -6,23 +6,24 @@ var qs = require('querystring');
 var CrowdPulse = require('./../crowd-pulse-data');
 var databaseName = require('./../crowd-pulse-data/databaseName');
 var config = require('./../lib/config');
-var FacebookProfileSchema = require('./../crowd-pulse-data/schema/facebookProfile');
+var InstagramProfileSchema = require('./../crowd-pulse-data/schema/instagramProfile');
 var batch = require('./../lib/batchOperations');
 
 const DB_PROFILES = databaseName.profiles;
 const CLIENT_SECRET = 'd9c64de8ca4e4c70b87c8e3b3509b176';
 const CLIENT_ID = '152debe8eda845d28529bedf9bce9ecb';
 
-const API_ACCESS_TOKEN = '';
+const API_ACCESS_TOKEN = 'https://api.instagram.com/oauth/access_token';
 const API_LOGIN_DIALOG = 'https://api.instagram.com/oauth/authorize/';
-const API_USER_POSTS = '';
+const API_USER_POSTS = 'https://api.instagram.com/v1/users/self/media/recent/';
+const GRANT = 'authorization_code';
 
 exports.endpoint = function() {
 
   /**
    * Creates a login dialog URL.
    * Params:
-   *    callbackUrl - the url send to Facebook as callback
+   *    callbackUrl - the url send to Instagram as callback
    */
   router.route('/instagram/login_dialog')
     .post(function (req, res) {
@@ -47,20 +48,22 @@ exports.endpoint = function() {
   /**
    * Exchange authorization code for access token.
    * Params:
-   *    code - the authorization code returned by Facebook after user login
-   *    callbackUrl - the url send to Facebook as callback
+   *    code - the authorization code returned by Instagram after user login
+   *    callbackUrl - the url send to Instagram as callback
    */
-  router.route('/facebook/request_token')
+  router.route('/instagram/request_token')
     .post(function (req, res) {
       try {
         var params = {
-          code: req.body.code,
           client_id: CLIENT_ID,
           client_secret: CLIENT_SECRET,
-          redirect_uri: req.body.callbackUrl
+          grant_type: GRANT,
+          redirect_uri: req.body.callbackUrl,
+          code: req.body.code
         };
 
-        request.get({ url: API_ACCESS_TOKEN, qs: params, json: true }, function(err, response, oauthData) {
+        request.post({url:API_ACCESS_TOKEN, form: params}, function(err, response, oauthData) {
+          // console.log(response);
           if (response.statusCode !== 200 || err) {
             res.sendStatus(500);
           } else {
@@ -70,9 +73,10 @@ exports.endpoint = function() {
             return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
               return conn.Profile.findOne({username: req.session.username}, function (err, profile) {
                 if (profile) {
-                  profile.identities.configs.facebookConfig = {
-                    accessToken: oauthData.access_token,
-                    expiresIn: oauthData.expires_in
+                  var parsed = JSON.parse(oauthData);
+                  profile.identities.configs.instagramConfig = {
+                    accessToken: parsed.access_token
+                    //expiresIn: oauthData.expires_in
                   };
                   profile.save();
                   res.status(200);
@@ -94,9 +98,9 @@ exports.endpoint = function() {
 
 
   /**
-   * Get Facebook user profile information.
+   * Get Instagram user profile information.
    */
-  router.route('/facebook/profile')
+  router.route('/instagram/profile')
     .get(function (req, res) {
       try {
         updateUserProfile(req.session.username, function (profile) {
@@ -115,9 +119,9 @@ exports.endpoint = function() {
     });
 
   /**
-   * Update Facebook configuration reading parameters from query.
+   * Update Instagram configuration reading parameters from query.
    */
-  router.route('/facebook/config')
+  router.route('/instagram/config')
     .get(function (req, res) {
       try {
         var params = req.query;
@@ -127,25 +131,25 @@ exports.endpoint = function() {
             if (user) {
 
               if (params.shareProfile !== null && params.shareProfile !== undefined) {
-                user.identities.configs.facebookConfig.shareProfile = params.shareProfile;
+                user.identities.configs.instagramConfig.shareProfile = params.shareProfile;
               }
 
               if (params.shareMessages !== null && params.shareMessages !== undefined) {
-                user.identities.configs.facebookConfig.shareMessages = params.shareMessages;
-                updateShareMessages(user.identities.configs.facebookConfig.facebookId, req.session.username, params.shareMessages);
-                updateShareMessages(user.identities.configs.facebookConfig.facebookId, databaseName.globalData, params.shareMessages);
+                user.identities.configs.instagramConfig.shareMessages = params.shareMessages;
+                updateShareMessages(user.identities.configs.instagramConfig.instagramkId, req.session.username, params.shareMessages);
+                updateShareMessages(user.identities.configs.instagramkConfig.instagramkId, databaseName.globalData, params.shareMessages);
               }
 
               if (params.shareFriends !== null && params.shareFriends !== undefined) {
-                user.identities.configs.facebookConfig.shareFriends = params.shareFriends;
+                user.identities.configs.instagramConfig.shareFriends = params.shareFriends;
                 updateShareFriends(req.session.username, req.session.username, params.shareFriends);
                 updateShareFriends(req.session.username, databaseName.globalData, params.shareFriends);
               }
 
               if (params.shareLikes !== null && params.shareLikes !== undefined) {
-                user.identities.configs.facebookConfig.shareLikes = params.shareLikes;
-                updateShareLikes(user.identities.configs.facebookConfig.facebookId, req.session.username, params.shareLikes);
-                updateShareLikes(user.identities.configs.facebookConfig.facebookId, databaseName.globalData, params.shareLikes);
+                user.identities.configs.instagramConfig.shareLikes = params.shareLikes;
+                updateShareLikes(user.identities.configs.instagramConfig.instagramId, req.session.username, params.shareLikes);
+                updateShareLikes(user.identities.configs.instagramConfig.instagramId, databaseName.globalData, params.shareLikes);
               }
 
               user.save();
@@ -168,11 +172,11 @@ exports.endpoint = function() {
     });
 
   /**
-   * Get Facebook user posts.
+   * Get Instagram user posts.
    * Params:
    *    messages - the number of messages to retrieve
    */
-  router.route('/facebook/posts')
+  router.route('/instagram/posts')
     .post(function (req, res) {
       try {
         var messagesToRead = req.body.messages;
@@ -188,7 +192,7 @@ exports.endpoint = function() {
           // return the messages
           var dbConnection = new CrowdPulse();
           return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
-            return conn.Message.find({source: /facebook_.*/}).sort({date: -1}).limit(messagesToRead);
+            return conn.Message.find({source: /instagram_.*/}).sort({date: -1}).limit(messagesToRead);
           }).then(function (messages) {
             dbConnection.disconnect();
             res.status(200);
@@ -203,83 +207,9 @@ exports.endpoint = function() {
     });
 
   /**
-   * Get Facebook user likes.
-   * Params:
-   *    likesNumber - the number of likes to retrieve
-   *    dateFrom
-   *    dateTo
+   * Delete Instagram information account, including posts and likes.
    */
-  router.route('/facebook/likes')
-    .post(function (req, res) {
-      try {
-        var likesNumber = req.body.likesNumber;
-        var dateFrom = req.body.dateFrom;
-        var dateTo = req.body.dateTo;
-
-        // if the client do not specify a likes number to read then update the user likes
-        if (!likesNumber) {
-          updateLikes(req.session.username).then(function () {
-            res.status(200);
-            res.json({auth: true});
-          });
-        } else {
-
-          // return the likes
-          var dbConnection = new CrowdPulse();
-          return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
-            return conn.Like.findLikes(dateFrom, dateTo, likesNumber);
-          }).then(function (likes) {
-            dbConnection.disconnect();
-            res.status(200);
-            res.json({auth: true, likes: likes});
-          });
-        }
-
-      } catch(err) {
-        console.log(err);
-        res.sendStatus(500);
-      }
-    });
-
-  /**
-   * Get Facebook user friends (only users that use the App).
-   * Params:
-   *    friendsNumber - the number of friends to retrieve
-   */
-  router.route('/facebook/friends')
-    .post(function (req, res) {
-      try {
-        var friendsNumber = req.body.friendsNumber;
-
-        // if the client do not specify a friends number to read then update the user friends
-        if (!friendsNumber) {
-          updateFriends(req.session.username).then(function () {
-            res.status(200);
-            res.json({auth: true});
-          });
-        } else {
-
-          // return the friends
-          var dbConnection = new CrowdPulse();
-          return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
-            return conn.Connection.find({source: /facebook/}).limit(friendsNumber);
-          }).then(function (friends) {
-            dbConnection.disconnect();
-            res.status(200);
-            res.json({auth: true, friends: friends});
-          });
-        }
-
-      } catch(err) {
-        console.log(err);
-        res.sendStatus(500);
-      }
-    });
-
-  /**
-   * Delete Facebook information account, including posts and likes.
-   */
-  router.route('/facebook/delete')
+  router.route('/instagram/delete')
     .delete(function (req, res) {
       try {
         var dbConnection = new CrowdPulse();
@@ -287,16 +217,16 @@ exports.endpoint = function() {
           return conn.Profile.findOne({username: req.session.username}, function (err, profile) {
             if (profile) {
 
-              var facebookId = profile.identities.facebook.facebookId;
-              deleteMessages(facebookId, req.session.username);
-              deleteMessages(facebookId, databaseName.globalData);
-              deleteLikes(facebookId, req.session.username);
-              deleteLikes(facebookId, databaseName.globalData);
+              var instagramId = profile.identities.instagram.instagramId;
+              deleteMessages(instagramId, req.session.username);
+              deleteMessages(instagramId, databaseName.globalData);
+              deleteLikes(instagramId, req.session.username);
+              deleteLikes(instagramId, databaseName.globalData);
               deleteFriends(req.session.username, req.session.username);
               deleteFriends(req.session.username, databaseName.globalData);
 
-              profile.identities.facebook = undefined;
-              profile.identities.configs.facebookConfig = undefined;
+              profile.identities.instagram = undefined;
+              profile.identities.configs.instagramConfig = undefined;
               profile.save();
 
               res.status(200);
@@ -331,14 +261,14 @@ var updateUserProfile = function(username, callback) {
   var dbConnection = new CrowdPulse();
   return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
     return conn.Profile.findOne({username: username}, function (err, profile) {
-      var facebookConfig = profile.identities.configs.facebookConfig;
+      var instagramConfig = profile.identities.configs.instagramConfig;
       var params = {
-        access_token: facebookConfig.accessToken
+        access_token: instagramConfig.accessToken
       };
       if (params.access_token) {
 
-        // true if it is the first time user requests facebook profile
-        var firstRequest = !profile.identities.configs.facebookConfig.facebookId;
+        // true if it is the first time user requests instagram profile
+        var firstRequest = !profile.identities.configs.instagramConfig.instagramId;
 
         // retrieve profile information about the current user
         request.get({ url: API_USER_DATA, qs: params, json: true }, function(err, response, userData) {
@@ -347,23 +277,21 @@ var updateUserProfile = function(username, callback) {
             return err;
           }
 
-          // save the Facebook user ID
-          profile.identities.facebook.facebookId = userData.id;
-          profile.identities.configs.facebookConfig.facebookId = userData.id;
+          // save the Instagram user ID
+          profile.identities.instagram.instagramId = userData.id;
+          profile.identities.configs.instagramConfig.instagramId = userData.id;
 
           if (firstRequest) {
 
             // share default value
-            facebookConfig.shareFriends = true;
-            facebookConfig.shareMessages = true;
-            facebookConfig.shareProfile = true;
-            facebookConfig.shareLikes = true;
+            instagramConfig.shareMessages = true;
+            instagramConfig.shareProfile = true;
           }
 
-          // save other Facebook data
-          for (var key in FacebookProfileSchema) {
-            if (FacebookProfileSchema.hasOwnProperty(key) && userData[key]) {
-              profile.identities.facebook[key] = userData[key];
+          // save other Instagram data
+          for (var key in InstagramProfileSchema) {
+            if (InstagramProfileSchema.hasOwnProperty(key) && userData[key]) {
+              profile.identities.instagram[key] = userData[key];
             }
           }
 
@@ -373,12 +301,12 @@ var updateUserProfile = function(username, callback) {
             userData.languages.forEach(function (lang) {
               langs.push(lang.name)
             });
-            profile.identities.facebook.languages = langs;
+            profile.identities.instagram.languages = langs;
           }
 
           // save picture url
           if (userData.id) {
-            profile.identities.facebook.picture = 'https://graph.facebook.com/v2.3/' + userData.id + '/picture?type=large';
+            profile.identities.instagram.picture = 'https://graph.facebook.com/v2.3/' + userData.id + '/picture?type=large';
           }
 
           // change profile picture
@@ -387,7 +315,7 @@ var updateUserProfile = function(username, callback) {
           }
 
           profile.save().then(function () {
-            console.log("Facebook profile of " + username + " updated at " + new Date());
+            console.log("Instagram profile of " + username + " updated at " + new Date());
             dbConnection.disconnect();
           });
 
@@ -499,131 +427,6 @@ var updatePosts = function(username) {
 };
 
 /**
- * Update user likes.
- * @param username
- */
-var updateLikes = function(username) {
-  var dbConnection = new CrowdPulse();
-  return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
-    return conn.Profile.findOne({username: username}, function (err, profile) {
-      if (profile) {
-        dbConnection.disconnect();
-
-        var facebookConfig = profile.identities.configs.facebookConfig;
-        var params = {
-          access_token: facebookConfig.accessToken,
-          limit: 1000
-        };
-
-        // retrieve likes of the current user
-        request.get({ url: API_USER_LIKES, qs: params, json: true }, function(err, response, likes) {
-
-          if (response.statusCode !== 200) {
-            return err;
-          }
-
-          var likesToSave = [];
-          var i = 0;
-
-          // check if there are other likes already stored
-          if (!facebookConfig.lastLikeId) {
-            facebookConfig.lastLikeId = 0;
-          }
-
-          while (i < likes.data.length) {
-            var likeDate = new Date(likes.data[i].created_time);
-            if (likeDate.getTime() <= facebookConfig.lastLikeId) {
-              break;
-            }
-            likesToSave.push({
-              oId: likes.data[i].id,
-              name: likes.data[i].name,
-              category: likes.data[i].category,
-              source: 'facebook_' + facebookConfig.facebookId,
-              fromUser: facebookConfig.facebookId,
-              date: likeDate,
-              share: facebookConfig.shareLikes
-            });
-            i++;
-          }
-
-          storeLikes(likesToSave, username).then(function () {
-            storeLikes(likesToSave, databaseName.globalData).then(function () {
-
-              // if new likes are saved
-              if (likesToSave.length > 0) {
-
-                // create new db connection to save last like timestamp in the user profile config
-                dbConnection = new CrowdPulse();
-                dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
-                  conn.Profile.findOne({username: username}, function (err, profile) {
-                    if (profile) {
-                      profile.identities.configs.facebookConfig.lastLikeId = likesToSave[0].date.getTime();
-                      profile.save().then(function () {
-                        dbConnection.disconnect();
-                      });
-                    }
-                  });
-                });
-              }
-            });
-          });
-        });
-      }
-    });
-  });
-};
-
-/**
- * Update user friends.
- * @param username
- */
-var updateFriends = function(username) {
-  var dbConnection = new CrowdPulse();
-  return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
-    return conn.Profile.findOne({username: username}, function (err, profile) {
-      if (profile) {
-        dbConnection.disconnect();
-
-        var facebookConfig = profile.identities.configs.facebookConfig;
-        var params = {
-          access_token: facebookConfig.accessToken,
-          limit: 1000
-        };
-
-        var share = facebookConfig.shareFriends;
-
-        // retrieve friends of the current user
-        request.get({ url: API_USER_FRIENDS, qs: params, json: true }, function(err, response, friends) {
-
-          if (response.statusCode !== 200) {
-            return err;
-          }
-
-          var friendsToSave = [];
-          var i = 0;
-          while (i < friends.data.length) {
-            friendsToSave.push({
-              username: username,
-              contactId: friends.data[i].id,
-              contactName: friends.data[i].name,
-              source: 'facebook',
-              share: share
-            });
-            i++;
-          }
-
-          storeFriends(friendsToSave, username).then(function () {
-            storeFriends(friendsToSave, databaseName.globalData);
-          });
-
-        });
-      }
-    });
-  });
-};
-
-/**
  * Store messages in the MongoDB database
  * @param messages
  * @param databaseName
@@ -639,69 +442,11 @@ var storeMessages = function(messages, databaseName) {
       return conn.Message.newFromObject(message).save().then(function () {
         messagesSaved++;
         if (messagesSaved >= messages.length) {
-          console.log(messages.length + " messages from Facebook saved in " + databaseName + " at " + new Date());
+          console.log(messages.length + " messages from Instagram saved in " + databaseName + " at " + new Date());
           return dbConnection.disconnect();
         }
       });
     });
-  });
-};
-
-/**
- * Store likes in the MongoDB database
- * @param likes
- * @param databaseName
- */
-var storeLikes = function(likes, databaseName) {
-  var dbConnection = new CrowdPulse();
-  var likesSaved = 0;
-  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
-    if (likes.length <= 0) {
-      return dbConnection.disconnect();
-    }
-    likes.forEach(function (like) {
-      return conn.Like.newFromObject(like).save().then(function () {
-        likesSaved++;
-        if (likesSaved >= likes.length) {
-          console.log(likes.length + " likes from Facebook saved in " + databaseName + " at " + new Date());
-          return dbConnection.disconnect();
-        }
-      });
-    });
-  });
-};
-
-/**
- * Store friends in the MongoDB database
- * @param friends
- * @param databaseName
- */
-var storeFriends = function(friends, databaseName) {
-  var dbConnection = new CrowdPulse();
-
-  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
-    if (friends.length <= 0) {
-      return dbConnection.disconnect();
-    }
-
-    // loop function to insert friends data synchronously
-    (function loop (i) {
-      var friend = friends[i];
-      conn.Connection.findOneAndUpdate({
-        username: friend.username,
-        source: 'facebook',
-        contactId: friend.contactId
-      }, friend, {upsert: true}, function () {
-        i++;
-        if (i >= friends.length) {
-          console.log(friends.length + " Facebook friends for " + friend.username + " saved or updated into " + databaseName);
-          return dbConnection.disconnect();
-        } else {
-          loop(i);
-        }
-      });
-    })(0);
-
   });
 };
 
@@ -717,51 +462,12 @@ var deleteMessages = function(username, databaseName) {
       if (err) {
         console.log(err);
       } else {
-        console.log("Facebook posts deleted from " + databaseName + " at " + new Date());
+        console.log("Instagram posts deleted from " + databaseName + " at " + new Date());
       }
       return dbConnection.disconnect();
     });
   });
 };
-
-/**
- * Delete likes stored in the MongoDB database
- * @param username
- * @param databaseName
- */
-var deleteLikes = function(username, databaseName) {
-  var dbConnection = new CrowdPulse();
-  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
-    return conn.Like.deleteMany({fromUser: username, source: /facebook.*/}, function (err) {
-      if (err) {
-        console.log(err);
-      } else {
-        console.log("Facebook likes deleted from " + databaseName + " at " + new Date());
-      }
-      return dbConnection.disconnect();
-    });
-  });
-};
-
-/**
- * Delete friends stored in the MongoDB database
- * @param username
- * @param databaseName
- */
-var deleteFriends = function(username, databaseName) {
-  var dbConnection = new CrowdPulse();
-  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
-    return conn.Connection.deleteMany({username: username, source: /facebook.*/}, function (err) {
-      if (err) {
-        console.log(err);
-      } else {
-        console.log("Facebook friends deleted from " + databaseName + " at " + new Date());
-      }
-      return dbConnection.disconnect();
-    });
-  });
-};
-
 
 /**
  * Update share option for messages.
@@ -772,63 +478,18 @@ var deleteFriends = function(username, databaseName) {
 var updateShareMessages = function (userId, databaseName, share) {
   var dbConnection = new CrowdPulse();
   return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
-    return conn.Message.update({source: 'facebook_' + userId}, {$set: {share: share}}, {multi: true},
+    return conn.Message.update({source: 'instagram_' + userId}, {$set: {share: share}}, {multi: true},
       function (err, numAffected) {
         if (err) {
           console.log(err);
         } else {
-          console.log(numAffected.nModified + " Facebook messages updated for " + databaseName + " at " + new Date());
+          console.log(numAffected.nModified + " Instagram messages updated for " + databaseName + " at " + new Date());
         }
         return dbConnection.disconnect();
       });
   });
 };
-
-/**
- * Update share option for friends.
- * @param username
- * @param databaseName
- * @param share
- */
-var updateShareFriends = function (username, databaseName, share) {
-  var dbConnection = new CrowdPulse();
-  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
-    return conn.Connection.update({username: username, source: 'facebook'}, {$set: {share: share}}, {multi: true},
-      function (err, numAffected) {
-        if (err) {
-          console.log(err);
-        } else {
-          console.log(numAffected.nModified + " Facebook friends updated for " + databaseName + " at " + new Date());
-        }
-        return dbConnection.disconnect();
-      });
-  });
-};
-
-/**
- * Update share option for likes.
- * @param userId
- * @param databaseName
- * @param share
- */
-var updateShareLikes = function (userId, databaseName, share) {
-  var dbConnection = new CrowdPulse();
-  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
-    return conn.Like.update({source: 'facebook_' + userId}, {$set: {share: share}}, {multi: true},
-      function (err, numAffected) {
-        if (err) {
-          console.log(err);
-        } else {
-          console.log(numAffected.nModified + " Facebook likes updated for " + databaseName + " at " + new Date());
-        }
-        return dbConnection.disconnect();
-      });
-  });
-};
-
 
 
 exports.updateUserProfile = updateUserProfile;
 exports.updatePosts = updatePosts;
-exports.updateLikes = updateLikes;
-exports.updateFriends = updateFriends;
