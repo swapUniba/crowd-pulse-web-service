@@ -14,6 +14,13 @@ curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
 sudo apt-get install -y nodejs
 ```
 
+## Installation
+To install the dependencies, run the following command in the project root:
+
+```
+sudo npm install
+```
+
 ## Configuration
 
 You can configure the Web service by creating a `config.json` just as the following sample:
@@ -46,15 +53,6 @@ You can configure the Web service by creating a `config.json` just as the follow
   }
 }
 ```
-
-Alternatively, you can replace the same information with the following environment variables:
-
-* `CROWD_PULSE_WS_PORT` instead of `port`
-* `CROWD_PULSE_WS_MONGO_URL` instead of `database.url`
-* `CROWD_PULSE_WS_MONGO_DB` instead of `database.db`
-* `CROWD_PULSE_MAIN_EXE` instead of `crowd-pulse.main`
-* `CROWD_PULSE_LOGS_PATH` instead of `logs.path`
-
 
 ## Run
 
