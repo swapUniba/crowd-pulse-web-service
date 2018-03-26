@@ -8,16 +8,13 @@ var Mixed = mongoose.Schema.Types.Mixed;
  */
 var InstagramProfileSchema = {
     instagramId: String,
-    email: String,
-    first_name: String,
-    last_name: String,
-    middle_name: String,
+    username: String,
+    full_name: String,
+    bio: String,
+    website: String,
     picture: String,
-    name: String,
-    age_range: Mixed,
-    gender: String,
-    languages: Mixed,
-    quotes: String
+    follows: Mixed,
+    followed_by: Mixed
 };
 
 module.exports = InstagramProfileSchema;

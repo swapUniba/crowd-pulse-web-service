@@ -16,6 +16,7 @@ const CLIENT_ID = '152debe8eda845d28529bedf9bce9ecb';
 const API_ACCESS_TOKEN = 'https://api.instagram.com/oauth/access_token';
 const API_LOGIN_DIALOG = 'https://api.instagram.com/oauth/authorize/';
 const API_USER_POSTS = 'https://api.instagram.com/v1/users/self/media/recent/';
+const API_USER_DATA = 'https://api.instagram.com/v1/users/self/';
 const GRANT = 'authorization_code';
 
 exports.endpoint = function() {
@@ -133,23 +134,10 @@ exports.endpoint = function() {
               if (params.shareProfile !== null && params.shareProfile !== undefined) {
                 user.identities.configs.instagramConfig.shareProfile = params.shareProfile;
               }
-
               if (params.shareMessages !== null && params.shareMessages !== undefined) {
                 user.identities.configs.instagramConfig.shareMessages = params.shareMessages;
-                updateShareMessages(user.identities.configs.instagramConfig.instagramkId, req.session.username, params.shareMessages);
-                updateShareMessages(user.identities.configs.instagramkConfig.instagramkId, databaseName.globalData, params.shareMessages);
-              }
-
-              if (params.shareFriends !== null && params.shareFriends !== undefined) {
-                user.identities.configs.instagramConfig.shareFriends = params.shareFriends;
-                updateShareFriends(req.session.username, req.session.username, params.shareFriends);
-                updateShareFriends(req.session.username, databaseName.globalData, params.shareFriends);
-              }
-
-              if (params.shareLikes !== null && params.shareLikes !== undefined) {
-                user.identities.configs.instagramConfig.shareLikes = params.shareLikes;
-                updateShareLikes(user.identities.configs.instagramConfig.instagramId, req.session.username, params.shareLikes);
-                updateShareLikes(user.identities.configs.instagramConfig.instagramId, databaseName.globalData, params.shareLikes);
+                updateShareMessages(user.identities.configs.instagramConfig.instagramId, req.session.username, params.shareMessages);
+                updateShareMessages(user.identities.configs.instagramConfig.instagramId, databaseName.globalData, params.shareMessages);
               }
 
               user.save();
@@ -220,10 +208,6 @@ exports.endpoint = function() {
               var instagramId = profile.identities.instagram.instagramId;
               deleteMessages(instagramId, req.session.username);
               deleteMessages(instagramId, databaseName.globalData);
-              deleteLikes(instagramId, req.session.username);
-              deleteLikes(instagramId, databaseName.globalData);
-              deleteFriends(req.session.username, req.session.username);
-              deleteFriends(req.session.username, databaseName.globalData);
 
               profile.identities.instagram = undefined;
               profile.identities.configs.instagramConfig = undefined;
@@ -273,13 +257,13 @@ var updateUserProfile = function(username, callback) {
         // retrieve profile information about the current user
         request.get({ url: API_USER_DATA, qs: params, json: true }, function(err, response, userData) {
 
+          // console.log(userData.data.id);
           if (response.statusCode !== 200) {
             return err;
           }
-
           // save the Instagram user ID
-          profile.identities.instagram.instagramId = userData.id;
-          profile.identities.configs.instagramConfig.instagramId = userData.id;
+          profile.identities.instagram.instagramId = userData.data.id;
+          profile.identities.configs.instagramConfig.instagramId = userData.data.id;
 
           if (firstRequest) {
 
@@ -290,28 +274,24 @@ var updateUserProfile = function(username, callback) {
 
           // save other Instagram data
           for (var key in InstagramProfileSchema) {
-            if (InstagramProfileSchema.hasOwnProperty(key) && userData[key]) {
-              profile.identities.instagram[key] = userData[key];
+            if (InstagramProfileSchema.hasOwnProperty(key) && userData.data[key]) {
+              // console.log(userData.data[key]);
+              profile.identities.instagram[key] = userData.data[key];
             }
           }
 
-          // save languages as array string
-          if (userData.languages) {
-            var langs = [];
-            userData.languages.forEach(function (lang) {
-              langs.push(lang.name)
-            });
-            profile.identities.instagram.languages = langs;
+          // save followers and follows count and profile picture
+          if (userData.data.id) {
+            console.log(userData.data.counts.follows);
+            profile.identities.instagram['follows'] = userData.data.counts.follows;
+            profile.identities.instagram['followed_by'] = userData.data.counts.followed_by;
+            profile.identities.instagram['picture'] = userData.data.profile_picture;
           }
 
-          // save picture url
-          if (userData.id) {
-            profile.identities.instagram.picture = 'https://graph.facebook.com/v2.3/' + userData.id + '/picture?type=large';
-          }
 
           // change profile picture
-          if (profile.identities.facebook.picture) {
-            profile.pictureUrl = profile.identities.facebook.picture;
+          if (profile.identities.instagram.picture) {
+            profile.pictureUrl = profile.identities.instagram.picture;
           }
 
           profile.save().then(function () {
@@ -345,14 +325,12 @@ var updatePosts = function(username) {
       if (profile) {
         dbConnection.disconnect();
 
-        var facebookConfig = profile.identities.configs.facebookConfig;
+        var instagramConfig = profile.identities.configs.instagramConfig;
         var params = {
-          access_token: facebookConfig.accessToken,
-          since: facebookConfig.lastPostId,
-          limit: 1000
+          access_token: instagramConfig.accessToken
         };
 
-        var share = facebookConfig.shareMessages;
+        var share = instagramConfig.shareMessages;
 
         // retrieve posts of the current user
         request.get({ url: API_USER_POSTS, qs: params, json: true }, function(err, response, posts) {
@@ -360,27 +338,39 @@ var updatePosts = function(username) {
           if (response.statusCode !== 200) {
             return err;
           }
-
           var messages = [];
           posts.data.forEach(function (post) {
-            var toUsers = null;
-            if (post.to) {
-              toUsers = post.to.map(function (users) {
-                return users.name;
-              });
+
+            // console.log(post.tags);
+            // console.log(post);
+            var location_name = null;
+            var location_latitude = null;
+            var location_longitude = null;
+            if(post.location) {
+              location_name = post.location.name;
+              location_latitude = post.location.latitude;
+              location_longitude = post.location.longitude;
             }
             messages.push({
               oId: post.id,
-              text: post.message || '',
-              source: 'facebook_' + facebookConfig.facebookId,
-              fromUser: facebookConfig.facebookId,
-              date: new Date(post.created_time),
-              story: post.story,
-              shares: post.shares,
-              toUsers: toUsers,
+              text: post.caption.text || '',
+              source: 'instagram_' + instagramConfig.instagramId,
+              fromUser: instagramConfig.instagramId,
+              date: new Date(post.caption.created_time * 1000), //unix time *1000
+              image: post.images.standard_resolution.url,
+              likes: post.likes.count,
+              comments: post.comments.count,
+              location: location_name,
+              latitude: location_latitude,
+              longitude: location_longitude,
+              tags: post.tags,
               share: share
             });
+            if(post.location) {
+              messages.push()
+            }
           });
+          console.log(messages);
 
           storeMessages(messages, username).then(function () {
             storeMessages(messages, databaseName.globalData).then(function () {
@@ -393,7 +383,7 @@ var updatePosts = function(username) {
                 dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
                   conn.Profile.findOne({username: username}, function (err, profile) {
                     if (profile) {
-                      profile.identities.configs.facebookConfig.lastPostId = messages[0].date.getTime() / 1000;
+                      profile.identities.configs.instagramConfig.lastPostId = messages[0].date.getTime() / 1000;
                       profile.save().then(function () {
                         dbConnection.disconnect();
                       });
@@ -458,7 +448,7 @@ var storeMessages = function(messages, databaseName) {
 var deleteMessages = function(username, databaseName) {
   var dbConnection = new CrowdPulse();
   return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
-    return conn.Message.deleteMany({fromUser: username, source: /facebook.*/}, function (err) {
+    return conn.Message.deleteMany({fromUser: username, source: /instagram.*/}, function (err) {
       if (err) {
         console.log(err);
       } else {

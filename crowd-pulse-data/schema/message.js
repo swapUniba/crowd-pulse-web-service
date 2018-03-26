@@ -29,7 +29,11 @@ var MessageSchema = builder(schemas.message, {
   sentiment: Number,
   number_cluster: Number,
   cluster_kmeans: Number,
-  emotion: String
+  emotion: String,
+  image: String,
+  likes: Number,
+  comments: Number,
+  location: String
 });
 
 MessageSchema.statics.newFromObject = function(object) {
