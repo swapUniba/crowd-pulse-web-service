@@ -195,7 +195,7 @@ exports.endpoint = function() {
     });
 
   /**
-   * Delete Instagram information account, including posts and likes.
+   * Delete Instagram information account, including posts.
    */
   router.route('/instagram/delete')
     .delete(function (req, res) {
