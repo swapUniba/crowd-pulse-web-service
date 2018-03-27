@@ -91,6 +91,7 @@ var ProfileSchema = builder(schemas.profile, {
       instagramConfig: {
         instagramId: String,
         accessToken: String,
+        lastPostId: String,
         shareProfile: Boolean,
         shareMessages: Boolean
       },

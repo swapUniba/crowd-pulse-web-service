@@ -30,7 +30,7 @@ var MessageSchema = builder(schemas.message, {
   number_cluster: Number,
   cluster_kmeans: Number,
   emotion: String,
-  image: String,
+  images: [String],
   likes: Number,
   comments: Number,
   location: String

@@ -64,7 +64,6 @@ exports.endpoint = function() {
         };
 
         request.post({url:API_ACCESS_TOKEN, form: params}, function(err, response, oauthData) {
-          // console.log(response);
           if (response.statusCode !== 200 || err) {
             res.sendStatus(500);
           } else {
@@ -257,7 +256,6 @@ var updateUserProfile = function(username, callback) {
         // retrieve profile information about the current user
         request.get({ url: API_USER_DATA, qs: params, json: true }, function(err, response, userData) {
 
-          // console.log(userData.data.id);
           if (response.statusCode !== 200) {
             return err;
           }
@@ -275,14 +273,12 @@ var updateUserProfile = function(username, callback) {
           // save other Instagram data
           for (var key in InstagramProfileSchema) {
             if (InstagramProfileSchema.hasOwnProperty(key) && userData.data[key]) {
-              // console.log(userData.data[key]);
               profile.identities.instagram[key] = userData.data[key];
             }
           }
 
           // save followers and follows count and profile picture
           if (userData.data.id) {
-            console.log(userData.data.counts.follows);
             profile.identities.instagram['follows'] = userData.data.counts.follows;
             profile.identities.instagram['followed_by'] = userData.data.counts.followed_by;
             profile.identities.instagram['picture'] = userData.data.profile_picture;
@@ -322,18 +318,20 @@ var updatePosts = function(username) {
   var dbConnection = new CrowdPulse();
   return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
     return conn.Profile.findOne({username: username}, function (err, profile) {
-      if (profile) {
+      if (!profile) {
+      } else {
         dbConnection.disconnect();
 
         var instagramConfig = profile.identities.configs.instagramConfig;
         var params = {
-          access_token: instagramConfig.accessToken
+          access_token: instagramConfig.accessToken,
+          min_id: instagramConfig.lastPostId
         };
 
         var share = instagramConfig.shareMessages;
 
         // retrieve posts of the current user
-        request.get({ url: API_USER_POSTS, qs: params, json: true }, function(err, response, posts) {
+        request.get({url: API_USER_POSTS, qs: params, json: true}, function (err, response, posts) {
 
           if (response.statusCode !== 200) {
             return err;
@@ -341,36 +339,45 @@ var updatePosts = function(username) {
           var messages = [];
           posts.data.forEach(function (post) {
 
-            // console.log(post.tags);
-            // console.log(post);
             var location_name = null;
             var location_latitude = null;
             var location_longitude = null;
-            if(post.location) {
+            if (post.location) {
               location_name = post.location.name;
               location_latitude = post.location.latitude;
               location_longitude = post.location.longitude;
             }
-            messages.push({
-              oId: post.id,
-              text: post.caption.text || '',
-              source: 'instagram_' + instagramConfig.instagramId,
-              fromUser: instagramConfig.instagramId,
-              date: new Date(post.caption.created_time * 1000), //unix time *1000
-              image: post.images.standard_resolution.url,
-              likes: post.likes.count,
-              comments: post.comments.count,
-              location: location_name,
-              latitude: location_latitude,
-              longitude: location_longitude,
-              tags: post.tags,
-              share: share
-            });
-            if(post.location) {
-              messages.push()
+            var description = '';
+            if (post.caption) {
+              description = post.caption.text;
+            }
+            var images = [];
+            if (post.carousel_media) {
+              post.carousel_media.forEach( function (media) {
+                images.push(media.images.standard_resolution.url);
+              });
+            } else {
+              images.push(post.images.standard_resolution.url);
+            }
+            instagramConfig.lastPostId  = instagramConfig.lastPostId ? instagramConfig.lastPostId : '0';
+            if (instagramConfig.lastPostId < post.id) {
+              messages.push({
+                oId: post.id,
+                text: description,
+                source: 'instagram_' + instagramConfig.instagramId,
+                fromUser: instagramConfig.instagramId,
+                date: new Date(post.created_time * 1000), //unix time *1000
+                images: images,
+                likes: post.likes.count,
+                comments: post.comments.count,
+                location: location_name,
+                latitude: location_latitude,
+                longitude: location_longitude,
+                // tags: post.tags,
+                share: share
+              });
             }
           });
-          console.log(messages);
 
           storeMessages(messages, username).then(function () {
             storeMessages(messages, databaseName.globalData).then(function () {
@@ -383,7 +390,8 @@ var updatePosts = function(username) {
                 dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
                   conn.Profile.findOne({username: username}, function (err, profile) {
                     if (profile) {
-                      profile.identities.configs.instagramConfig.lastPostId = messages[0].date.getTime() / 1000;
+                      profile.identities.configs.instagramConfig.lastPostId = messages[0].oId;
+
                       profile.save().then(function () {
                         dbConnection.disconnect();
                       });
