@@ -353,9 +353,16 @@ var updatePosts = function(username) {
             }
             var images = [];
             if (post.carousel_media) {
-              post.carousel_media.forEach( function (media) {
-                images.push(media.images.standard_resolution.url);
-              });
+              if (post.carousel_media.type == 'image') {
+                post.carousel_media.forEach( function (media) {
+                  images.push(media.images.standard_resolution.url);
+                });
+              } else if (post.carousel_media.type == 'video') {
+                post.carousel_media.forEach( function (media) {
+                  images.push(media.videos.standard_resolution.url);
+                });
+              }
+
             } else {
               images.push(post.images.standard_resolution.url);
             }
