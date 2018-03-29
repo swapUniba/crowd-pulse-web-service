@@ -351,21 +351,27 @@ var updatePosts = function(username) {
             if (post.caption) {
               description = post.caption.text;
             }
+            // Controllo video/immagini mltiple
             var images = [];
-            if (post.carousel_media) {
-              if (post.carousel_media.type == 'image') {
-                post.carousel_media.forEach( function (media) {
+            if (post.type == 'carousel') {
+              post.carousel_media.forEach( function (media) {
+                if (media.type == 'image') {
                   images.push(media.images.standard_resolution.url);
-                });
-              } else if (post.carousel_media.type == 'video') {
-                post.carousel_media.forEach( function (media) {
-                  images.push(media.videos.standard_resolution.url);
-                });
-              }
-
+                } else if (media.type == 'video') {
+                  images.push(post.images.standard_resolution.url);
+                }
+              });
             } else {
               images.push(post.images.standard_resolution.url);
             }
+            // Controllo users in foto
+            var users = [];
+            if (post.users_in_photo) {
+              post.users_in_photo.forEach( function (u) {
+                users.push(u.user.id);
+              });
+            }
+
             instagramConfig.lastPostId  = instagramConfig.lastPostId ? instagramConfig.lastPostId : '0';
             if (instagramConfig.lastPostId < post.id) {
               messages.push({
@@ -380,12 +386,13 @@ var updatePosts = function(username) {
                 location: location_name,
                 latitude: location_latitude,
                 longitude: location_longitude,
+                refUsers: users,
                 // tags: post.tags,
                 share: share
               });
             }
           });
-
+          console.log(messages);
           storeMessages(messages, username).then(function () {
             storeMessages(messages, databaseName.globalData).then(function () {
 
