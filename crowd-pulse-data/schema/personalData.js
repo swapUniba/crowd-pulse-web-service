@@ -31,10 +31,6 @@ var PersonalDataSchema = builder(schemas.personalData, {
   tilting: Number,
   walking: Number,
   unknown: Number,
-  //Body&Weight
-  bodyFat : Number,
-  bodyWeigh : Number,
-  bmi : Number,
   //Sleep
   duration: Number,
   efficiency: Number,
@@ -57,7 +53,24 @@ var PersonalDataSchema = builder(schemas.personalData, {
   fiber: Number,
   protein: Number,
   sodium: Number,
-  water: Number
+  water: Number,
+  //activity
+  steps: Number,
+  distance: Number,
+  floors: Number,
+  elevation: Number,
+  minutesSedentary: Number,
+  minutesLightlyActive: Number,
+  minutesFairlyActive: Number,
+  minutesVeryActive: Number,
+  activityCalories: Number,
+  nameActivity: String,
+  //Body
+  bodyFat: Number,
+  bodyWeight: Number,
+  bodyBmi: Number,
+  nameBody: String
+
 
 });
 
