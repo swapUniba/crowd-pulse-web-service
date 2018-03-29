@@ -10,8 +10,8 @@ var InstagramProfileSchema = require('./../crowd-pulse-data/schema/instagramProf
 var batch = require('./../lib/batchOperations');
 
 const DB_PROFILES = databaseName.profiles;
-const CLIENT_SECRET = 'd9c64de8ca4e4c70b87c8e3b3509b176';
-const CLIENT_ID = '152debe8eda845d28529bedf9bce9ecb';
+const CLIENT_SECRET = '26d1ec3a75874e3b925202183b99f13b';
+const CLIENT_ID = 'cc8049f4f69d4f11b02d6319c55e0b58';
 
 const API_ACCESS_TOKEN = 'https://api.instagram.com/oauth/access_token';
 const API_LOGIN_DIALOG = 'https://api.instagram.com/oauth/authorize/';
