@@ -10,7 +10,9 @@ var InstagramProfileSchema = require('./../crowd-pulse-data/schema/instagramProf
 var batch = require('./../lib/batchOperations');
 
 const DB_PROFILES = databaseName.profiles;
+//const CLIENT_SECRET = 'd9c64de8ca4e4c70b87c8e3b3509b176';
 const CLIENT_SECRET = '26d1ec3a75874e3b925202183b99f13b';
+//const CLIENT_ID = '152debe8eda845d28529bedf9bce9ecb';
 const CLIENT_ID = 'cc8049f4f69d4f11b02d6319c55e0b58';
 
 const API_ACCESS_TOKEN = 'https://api.instagram.com/oauth/access_token';
@@ -18,6 +20,7 @@ const API_LOGIN_DIALOG = 'https://api.instagram.com/oauth/authorize/';
 const API_USER_POSTS = 'https://api.instagram.com/v1/users/self/media/recent/';
 const API_USER_DATA = 'https://api.instagram.com/v1/users/self/';
 const GRANT = 'authorization_code';
+const DEFAULT_LANGUAGE = 'en';
 
 exports.endpoint = function() {
 
@@ -351,20 +354,20 @@ var updatePosts = function(username) {
             if (post.caption) {
               description = post.caption.text;
             }
-            // Controllo video/immagini mltiple
+            // carousel image/video control
             var images = [];
-            if (post.type == 'carousel') {
+            if (post.type === 'carousel') {
               post.carousel_media.forEach( function (media) {
-                if (media.type == 'image') {
+                if (media.type === 'image') {
                   images.push(media.images.standard_resolution.url);
-                } else if (media.type == 'video') {
+                } else if (media.type === 'video') {
                   images.push(post.images.standard_resolution.url);
                 }
               });
             } else {
               images.push(post.images.standard_resolution.url);
             }
-            // Controllo users in foto
+            // users in photo control
             var users = [];
             if (post.users_in_photo) {
               post.users_in_photo.forEach( function (u) {
@@ -387,12 +390,13 @@ var updatePosts = function(username) {
                 latitude: location_latitude,
                 longitude: location_longitude,
                 refUsers: users,
+                language: DEFAULT_LANGUAGE,
                 // tags: post.tags,
                 share: share
               });
             }
           });
-          console.log(messages);
+          // console.log(messages);
           storeMessages(messages, username).then(function () {
             storeMessages(messages, databaseName.globalData).then(function () {
 
