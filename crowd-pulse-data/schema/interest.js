@@ -20,7 +20,21 @@ InterestSchema.statics.newFromObject = function(object) {
 };
 
 InterestSchema.statics.statWordCloud = function (from, to, source, limitResults) {
-  return Q(this.aggregate(buildStatWordCloud(from, to, source, limitResults)).exec());
+  return Q(this.aggregate(buildStatWordCloud(from, to, source, limitResults)).exec()).then(function (data) {
+
+    // choose 'today' as default value
+    to = to ? new Date(to): new Date();
+
+    if (data && data.length > 0) {
+      data.forEach(function (interest) {
+
+        // calculate weight as a function of time
+        interest.weight = (1 - (to.getTime() - interest.timestamp) / to.getTime()) * interest.weight;
+      });
+    }
+
+    return Q(data);
+  });
 };
 
 
@@ -31,7 +45,14 @@ var buildStatWordCloud = function(from, to, source, limitResults) {
   to = new Date(to);
   var hasFrom = !isNaN(from.getDate());
   var hasTo = !isNaN(to.getDate());
-  var hasSource = (typeof source != 'undefined' && source!='');
+  var hasSource = (typeof source != 'undefined' && source !== '');
+
+  // group by query
+  var groupBy = {
+    _id: "$value",
+    timestamp: { $max: "$timestamp" },
+    weight: { $max: "$confidence" }
+  };
 
   if (hasFrom || hasTo || hasSource) {
     filter = {$match: {}};
@@ -45,10 +66,24 @@ var buildStatWordCloud = function(from, to, source, limitResults) {
         filter.$match['timestamp']['$lte'] = to.getTime();
       }
     }
+  }
 
-    if (hasSource) {
-      filter.$match['source'] = source;
+  if (hasSource) {
+    filter.$match['source'] = source;
+
+    // sum confidence only for the app (confidence is the foreground time)
+    if (source === 'app_category') {
+      groupBy['weight'] = {$sum: '$confidence'};
     }
+
+  } else {
+
+    if (filter === undefined) {
+      filter = {$match: {}};
+    }
+
+    // exclude app category from "ALL" interests visualization (for confidence problem in visualization)
+    filter.$match['source'] = {$ne: 'app_category'};
   }
 
   var aggregations = [];
@@ -59,18 +94,19 @@ var buildStatWordCloud = function(from, to, source, limitResults) {
 
   aggregations.push({
     $project: {
-      value: "$value"
+      _id: false,
+      value: '$value',
+      confidence: '$confidence',
+      timestamp: '$timestamp'
     }
-  },{
-    $group: {
-      _id: "$value",
-      weight: {$sum: 1}
-    }
+  }, {
+    $group: groupBy
   }, {
     $project: {
       _id: false,
-      value: "$_id",
-      weight: true
+      value: '$_id',
+      weight: true,
+      timestamp: true
     }
   }, {
     $sort: {
