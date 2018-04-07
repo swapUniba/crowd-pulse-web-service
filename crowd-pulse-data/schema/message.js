@@ -373,6 +373,14 @@ var buildStatMapQuery = function(type, terms, from, to, sentiment, language, lat
     aggregations.push(filter);
   }
 
+  if (type === databaseName.globalData) {
+    aggregations.push({
+      $match: {
+        share: true
+      }
+    });
+  }
+
   aggregations.push({
     $match: {
       latitude: {$exists: true}
@@ -382,10 +390,13 @@ var buildStatMapQuery = function(type, terms, from, to, sentiment, language, lat
       _id: false,
       latitude:  true,
       longitude: true,
-      text: true
+      text: true,
+      images: true,
+      date: true,
+      fromUser: true
     }
   });
- console.log(aggregations);
+ // console.log(aggregations);
   return aggregations;
 };
 

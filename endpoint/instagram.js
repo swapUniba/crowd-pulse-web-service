@@ -10,7 +10,9 @@ var InstagramProfileSchema = require('./../crowd-pulse-data/schema/instagramProf
 var batch = require('./../lib/batchOperations');
 
 const DB_PROFILES = databaseName.profiles;
+//const CLIENT_SECRET = 'd9c64de8ca4e4c70b87c8e3b3509b176';//Marco
 const CLIENT_SECRET = '26d1ec3a75874e3b925202183b99f13b';
+//const CLIENT_ID = '152debe8eda845d28529bedf9bce9ecb'; //Marco
 const CLIENT_ID = 'cc8049f4f69d4f11b02d6319c55e0b58';
 
 const API_ACCESS_TOKEN = 'https://api.instagram.com/oauth/access_token';
@@ -18,6 +20,7 @@ const API_LOGIN_DIALOG = 'https://api.instagram.com/oauth/authorize/';
 const API_USER_POSTS = 'https://api.instagram.com/v1/users/self/media/recent/';
 const API_USER_DATA = 'https://api.instagram.com/v1/users/self/';
 const GRANT = 'authorization_code';
+const DEFAULT_LANGUAGE = 'en';
 
 exports.endpoint = function() {
 
@@ -207,6 +210,8 @@ exports.endpoint = function() {
               var instagramId = profile.identities.instagram.instagramId;
               deleteMessages(instagramId, req.session.username);
               deleteMessages(instagramId, databaseName.globalData);
+              deleteFriends(req.session.username, req.session.username);
+              deleteFriends(req.session.username, databaseName.globalData);
 
               profile.identities.instagram = undefined;
               profile.identities.configs.instagramConfig = undefined;
@@ -316,6 +321,8 @@ var updateUserProfile = function(username, callback) {
  */
 var updatePosts = function(username) {
   var dbConnection = new CrowdPulse();
+  var friendsToSave = [];
+  var temp = [];
   return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
     return conn.Profile.findOne({username: username}, function (err, profile) {
       if (!profile) {
@@ -338,7 +345,6 @@ var updatePosts = function(username) {
           }
           var messages = [];
           posts.data.forEach(function (post) {
-
             var location_name = null;
             var location_latitude = null;
             var location_longitude = null;
@@ -351,26 +357,40 @@ var updatePosts = function(username) {
             if (post.caption) {
               description = post.caption.text;
             }
-            // Controllo video/immagini mltiple
+            // carousel image/video control
             var images = [];
-            if (post.type == 'carousel') {
+            if (post.type === 'carousel') {
               post.carousel_media.forEach( function (media) {
-                if (media.type == 'image') {
+                if (media.type === 'image') {
                   images.push(media.images.standard_resolution.url);
-                } else if (media.type == 'video') {
+                } else if (media.type === 'video') {
                   images.push(post.images.standard_resolution.url);
                 }
               });
             } else {
               images.push(post.images.standard_resolution.url);
             }
-            // Controllo users in foto
+            // users in photo control
             var users = [];
+            var friends = [];
             if (post.users_in_photo) {
+
               post.users_in_photo.forEach( function (u) {
-                users.push(u.user.id);
+
+                users.push(u.user.username);
+                friends.push({
+                  username: username,
+                  contactId: u.user.username,
+                  source: 'instagram'
+                })
               });
             }
+            temp.push(friends);
+            /*friendsToSave.forEach( function (u){
+              if (u) {
+                friendsToSave.push(u)
+              }
+            });*/
 
             instagramConfig.lastPostId  = instagramConfig.lastPostId ? instagramConfig.lastPostId : '0';
             if (instagramConfig.lastPostId < post.id) {
@@ -387,12 +407,23 @@ var updatePosts = function(username) {
                 latitude: location_latitude,
                 longitude: location_longitude,
                 refUsers: users,
+                language: DEFAULT_LANGUAGE,
                 // tags: post.tags,
                 share: share
               });
             }
           });
-          console.log(messages);
+          // console.log(messages);
+
+          temp.forEach(function(u) {
+            if(u && u.length > 0) {
+              friendsToSave.push(u)
+            }
+          });
+          // console.log(friendsToSave);
+          storeFriends(friendsToSave, username).then(function () {
+            storeFriends(friendsToSave, databaseName.globalData);
+          });
           storeMessages(messages, username).then(function () {
             storeMessages(messages, databaseName.globalData).then(function () {
 
@@ -437,6 +468,41 @@ var updatePosts = function(username) {
     });
   });
 };
+
+/**
+ * Get Instagram user friends (people tagged in posts).
+ * Params:
+ *    friendsNumber - the number of friends to retrieve
+ */
+router.route('/instagram/friends')
+  .post(function (req, res) {
+    try {
+      var friendsNumber = req.body.friendsNumber;
+
+      // if the client do not specify a friends number to read then update the user friends
+      if (!friendsNumber) {
+        updatePosts(req.session.username).then(function () {
+          res.status(200);
+          res.json({auth: true});
+        });
+      } else {
+
+        // return the friends
+        var dbConnection = new CrowdPulse();
+        return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
+          return conn.Connection.find({source: /instagram/}).limit(friendsNumber);
+        }).then(function (friends) {
+          dbConnection.disconnect();
+          res.status(200);
+          res.json({auth: true, friends: friends});
+        });
+      }
+
+    } catch(err) {
+      console.log(err);
+      res.sendStatus(500);
+    }
+  });
 
 /**
  * Store messages in the MongoDB database
@@ -501,7 +567,61 @@ var updateShareMessages = function (userId, databaseName, share) {
       });
   });
 };
+/**
+ * Store friends in the MongoDB database
+ * @param friends
+ * @param databaseName
+ */
+var storeFriends = function(friends, databaseName) {
+  var dbConnection = new CrowdPulse();
 
+  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+    if (friends.length <= 0) {
+      return dbConnection.disconnect();
+    }
+
+    // loop function to insert friends data synchronously
+    (function loop (i) {
+      var friend = friends[i];
+      friend.forEach(function (fr){
+        conn.Connection.findOneAndUpdate({
+          username: fr.username,
+          contactId: fr.contactId,
+          source: 'instagram'
+
+        }, fr, {upsert: true}, function () {
+
+          if (i >= friends.length) {
+            console.log(friends.length + " Instagram friends for " + fr.username + " saved or updated into " + databaseName);
+            return dbConnection.disconnect();
+          } else {
+            loop(i);
+          }
+        });
+      });
+      i++;
+    })(0);
+
+  });
+};
+/**
+ * Delete friends stored in the MongoDB database
+ * @param username
+ * @param databaseName
+ */
+var deleteFriends = function(username, databaseName) {
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
+    return conn.Connection.deleteMany({username: username, source: /instagram.*/}, function (err) {
+      if (err) {
+        console.log(err);
+      } else {
+        console.log("Instagram friends deleted from " + databaseName + " at " + new Date());
+      }
+      return dbConnection.disconnect();
+    });
+  });
+};
 
 exports.updateUserProfile = updateUserProfile;
 exports.updatePosts = updatePosts;

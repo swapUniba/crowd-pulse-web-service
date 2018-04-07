@@ -78,6 +78,18 @@ var demographicsSchema = {
     source: String,
     confidence: Number,
     timestamp: Number
+  }],
+  website: [{
+    value: String,
+    source: String,
+    confidence: Number,
+    timestamp: Number
+  }],
+  bio: [{
+    value: String,
+    source: String,
+    confidence: Number,
+    timestamp: Number
   }]
 };
 

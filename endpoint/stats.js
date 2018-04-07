@@ -96,6 +96,11 @@ module.exports = function() {
   // /api/stats/sentiment?db=sexism&from=2015-10-11&to=2015-10-13&type=tag&terms=aword&terms=anotherword
     .get(function(req, res) {
       return handleGenericStat(req, res, function(conn, type, terms, from, to, sentiment, language, lat, lng, ray) {
+
+        // use type parameter to save database name if empty
+        if (!type) {
+          type = req.query.db;
+        }
         return conn.Message.statMap(type, terms, from, to, sentiment, language, lat, lng, ray);
       });
     });
