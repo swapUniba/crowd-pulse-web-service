@@ -65,6 +65,8 @@ var PersonalDataSchema = builder(schemas.personalData, {
   minutesVeryActive: Number,
   activityCalories: Number,
   nameActivity: String,
+  startTime: String,
+  description: String,
   //Body
   bodyFat: Number,
   bodyWeight: Number,

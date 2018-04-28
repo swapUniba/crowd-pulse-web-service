@@ -22,12 +22,21 @@ const API_USER_DATA = 'https://api.fitbit.com/1/user/-/profile.json';
 const API_USER_BODY_AND_WEIGHT_DATA = 'https://api.fitbit.com/1/user/-/body/weight/date/today/1y.json';
 const API_USER_BODY_AND_FAT_DATA = 'https://api.fitbit.com/1/user/-/body/fat/date/today/1y.json';
 const API_USER_BODY_AND_BMI_DATA = 'https://api.fitbit.com/1/user/-/body/bmi/date/today/1y.json';
+const API_USER_DAILY_BODY_AND_WEIGHT_DATA = 'https://api.fitbit.com/1/user/-/body/weight/date/today/1d.json';
+const API_USER_DAILY_BODY_AND_FAT_DATA = 'https://api.fitbit.com/1/user/-/body/fat/date/today/1d.json';
+const API_USER_DAILY_BODY_AND_BMI_DATA = 'https://api.fitbit.com/1/user/-/body/bmi/date/today/1d.json';
 
 const API_USER_HEARTRATE_DATA = 'https://api.fitbit.com/1/user/-/activities/heart/date/today/1m.json';
+const API_USER_DAILY_HEARTRATE_DATA = 'https://api.fitbit.com/1/user/-/activities/heart/date/today/1d.json';
+
+
 const API_USER_FOOD_DATA = 'https://api.fitbit.com/1/user/-/foods/log/caloriesIn/date/today/1y.json';
+const API_USER_DAILY_FOOD_DATA = 'https://api.fitbit.com/1/user/-/foods/log/caloriesIn/date/today/1d.json';
+
 const API_USER_FRIENDS_DATA = 'https://api.fitbit.com/1/user/-/friends.json';
 const API_USER_SLEEP_DATA = 'https://api.fitbit.com/1.2/user/-/sleep/date/';
 
+const API_USER_DAILY_ACTIVITY = 'https://api.fitbit.com/1/user/-/activities/date/';
 const API_USER_ACTIVITY_STEPS = 'https://api.fitbit.com/1/user/-/activities/steps/date/today/1y.json';
 const API_USER_ACTIVITY_DISTANCE = 'https://api.fitbit.com/1/user/-/activities/distance/date/today/1y.json';
 const API_USER_ACTIVITY_FLOORS = 'https://api.fitbit.com/1/user/-/activities/floors/date/today/1y.json';
@@ -201,88 +210,100 @@ exports.endpoint = function() {
   router.route('/fitbit/activity')
     .post(function (req, res) {
       try {
-        var activityNumber = req.body.activityNumber;
 
-        // if the client do not specify a activity number to read then update the user activities
-        if (!activityNumber) {
-          updateUserActivity(req.session.username).then(function () {
-            res.status(200);
-            res.json({auth: true});
-          });
-        } else {
+        var dbConnection1 = new CrowdPulse();
+        return dbConnection1.connect(config.database.url, req.session.username).then(function (conn) {
+          return conn.PersonalData.count({source: /fitbit-activity/});
+        }).then(function (numberActivities) {
+          dbConnection1.disconnect();
+          var activityNumber = req.body.activityNumber;
 
-          // return the activity
-          var dbConnection = new CrowdPulse();
-          return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
-            return conn.PersonalData.find({source: /fitbit-activity/}).sort({timestamp: -1});
-          }).then(function (activities) {
-           var i = 0, flag1 = 0, flag2 = 0, flag3 = 0, flag4 = 0, flag5 = 0,flag6 = 0, flag7 = 0, flag8 = 0, flag9 = 0;
-           var calories = [],fairly = [], minutesLightlyActive = [], veryActive = [], minutesSedentary = [],
-             elevation = [], floors = [], steps = [], distance = [];
-            while(i < activities.length)
-            {
-              if (activities[i].nameActivity === "calories" && flag1 < 2)
+          if (numberActivities > 0 )
+          {
+            // return the activity
+            var dbConnection = new CrowdPulse();
+            return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
+              return conn.PersonalData.find({source: /fitbit-activity/}).sort({timestamp: -1});
+            }).then(function (activities) {
+
+              var i = 0, flag1 = 0, flag2 = 0, flag3 = 0, flag4 = 0, flag5 = 0,flag6 = 0, flag7 = 0, flag8 = 0, flag9 = 0;
+              var calories = [],fairly = [], minutesLightlyActive = [], veryActive = [], minutesSedentary = [],
+                elevation = [], floors = [], steps = [], distance = [];
+              while(i < activities.length)
               {
-                calories = [activities[i].timestamp, activities[i].activityCalories];
-                flag1 = flag1+1;
-              }
+                if (activities[i].nameActivity === "calories" && flag1 < 2)
+                {
+                  calories = [activities[i].timestamp, activities[i].activityCalories];
+                  flag1 = flag1+1;
+                }
 
-              if (activities[i].nameActivity === "fairly" && flag2 < 2)
-              {
-                fairly = [activities[i].timestamp, activities[i].minutesFairlyActive];
-                flag2 = flag2+1;
-              }
+                if (activities[i].nameActivity === "fairly" && flag2 < 2)
+                {
+                  fairly = [activities[i].timestamp, activities[i].minutesFairlyActive];
+                  flag2 = flag2+1;
+                }
 
-              if (activities[i].nameActivity === "minutesLightlyActive" && flag3 < 2)
-              {
-                minutesLightlyActive = [activities[i].timestamp, activities[i].minutesLightlyActive];
-                flag3 = flag3+1;
-              }
+                if (activities[i].nameActivity === "minutesLightlyActive" && flag3 < 2)
+                {
+                  minutesLightlyActive = [activities[i].timestamp, activities[i].minutesLightlyActive];
+                  flag3 = flag3+1;
+                }
 
-              if (activities[i].nameActivity === "veryActive" && flag4 < 2)
-              {
-                veryActive = [activities[i].timestamp, activities[i].minutesVeryActive];
-                flag4 = flag4+1;
-              }
+                if (activities[i].nameActivity === "veryActive" && flag4 < 2)
+                {
+                  veryActive = [activities[i].timestamp, activities[i].minutesVeryActive];
+                  flag4 = flag4+1;
+                }
 
-              if (activities[i].nameActivity === "minutesSedentary" && flag5 < 2)
-              {
-                minutesSedentary = [activities[i].timestamp, activities[i].minutesSedentary];
-                flag5 = flag5+1;
-              }
+                if (activities[i].nameActivity === "minutesSedentary" && flag5 < 2)
+                {
+                  minutesSedentary = [activities[i].timestamp, activities[i].minutesSedentary];
+                  flag5 = flag5+1;
+                }
 
-              if (activities[i].nameActivity === "elevation" && flag6 < 2)
-              {
-                elevation = [activities[i].timestamp, activities[i].elevation];
-                flag6 = flag6+1;
-              }
+                if (activities[i].nameActivity === "elevation" && flag6 < 2)
+                {
+                  elevation = [activities[i].timestamp, activities[i].elevation];
+                  flag6 = flag6+1;
+                }
 
-              if (activities[i].nameActivity === "floors" && flag7 < 2)
-              {
-                floors = [activities[i].timestamp, activities[i].floors];
-                flag7 = flag7+1;
-              }
+                if (activities[i].nameActivity === "floors" && flag7 < 2)
+                {
+                  floors = [activities[i].timestamp, activities[i].floors];
+                  flag7 = flag7+1;
+                }
 
-              if (activities[i].nameActivity === "steps" && flag8 < 2)
-              {
-                steps = [activities[i].timestamp, activities[i].steps];
-                flag8 = flag8+1;
-              }
+                if (activities[i].nameActivity === "steps" && flag8 < 2)
+                {
+                  steps = [activities[i].timestamp, activities[i].steps];
+                  flag8 = flag8+1;
+                }
 
-              if (activities[i].nameActivity === "distance" && flag9 < 2)
-              {
-                distance = [activities[i].timestamp, activities[i].distance];
-                flag9 = flag9+1;
-              }
+                if (activities[i].nameActivity === "distance" && flag9 < 2)
+                {
+                  distance = [activities[i].timestamp, activities[i].distance];
+                  flag9 = flag9+1;
+                }
 
-              i = i + 1;
+                i = i + 1;
+              }
+              res.status(200);
+              res.json({auth: true, distance: distance, steps : steps, floors : floors, elevation : elevation,
+                minutesSedentary : minutesSedentary, veryActive : veryActive, minutesLightlyActive : minutesLightlyActive,
+                fairly : fairly, calories : calories });
+            });
+
+          }
+          else if (numberActivities == 0){
+            // if the client do not specify a sleep number to read then update the user sleep
+            if (!activityNumber) {
+              updateUserActivity(req.session.username).then(function () {
+                res.status(200);
+                res.json({auth: true});
+              });
             }
-            res.status(200);
-            res.json({auth: true, distance: distance, steps : steps, floors : floors, elevation : elevation,
-              minutesSedentary : minutesSedentary, veryActive : veryActive, minutesLightlyActive : minutesLightlyActive,
-              fairly : fairly, calories : calories });
-          });
-        }
+          }
+        });
 
       } catch(err) {
         console.log(err);
@@ -471,27 +492,35 @@ exports.endpoint = function() {
   router.route('/fitbit/heartrate')
     .post(function (req, res) {
       try {
-        var heartNumber = req.body.heartNumber;
+        var dbConnection1 = new CrowdPulse();
+        return dbConnection1.connect(config.database.url, req.session.username).then(function (conn) {
+          return conn.PersonalData.count({source: /fitbit-heart/});
+        }).then(function (numberHeart) {
+          dbConnection1.disconnect();
+          var heartNumber = req.body.heartNumber;
 
-        // if the client do not specify a sleep number to read then update the user sleep
-        if (!heartNumber) {
-          updateUserHeartRate(req.session.username).then(function () {
-            res.status(200);
-            res.json({auth: true});
-          });
-        } else {
+          if (numberHeart > 0)
+          {
 
-          // return the sleep
-          var dbConnection = new CrowdPulse();
-          return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
-            return conn.PersonalData.find({source: /fitbit-heart/}).limit(heartNumber);
-          }).then(function (heart) {
-            dbConnection.disconnect();
-            res.status(200);
-            res.json({auth: true, heart: heart});
-          });
-        }
+            // return the heartrate
+            var dbConnection = new CrowdPulse();
+            return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
+              return conn.PersonalData.find({source: /fitbit-heart/}).limit(heartNumber);
+            }).then(function (heart) {
+              dbConnection.disconnect();
+              res.status(200);
+              res.json({auth: true, heart: heart});
+            });
 
+          }
+          else if (numberHeart == 0){
+
+              updateUserHeartRate(req.session.username).then(function () {
+                res.status(200);
+                res.json({auth: true});
+              });
+          }
+        });
       } catch(err) {
         console.log(err);
         res.sendStatus(500);
@@ -505,26 +534,37 @@ exports.endpoint = function() {
   router.route('/fitbit/sleep')
     .post(function (req, res) {
       try {
-        var sleepNumber = req.body.sleepNumber;
 
-        // if the client do not specify a sleep number to read then update the user sleep
-        if (!sleepNumber) {
-          updateUserSleep(req.session.username).then(function () {
-            res.status(200);
-            res.json({auth: true});
-          });
-        } else {
+        var dbConnection1 = new CrowdPulse();
+        return dbConnection1.connect(config.database.url, req.session.username).then(function (conn) {
+          return conn.PersonalData.count({source: /fitbit-sleep/});
+        }).then(function (numberSleep) {
+          dbConnection1.disconnect();
+          var sleepNumber = req.body.sleepNumber;
 
-          // return the sleep
-          var dbConnection = new CrowdPulse();
-          return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
-            return conn.PersonalData.find({source: /fitbit-sleep/}).limit(sleepNumber).sort({timestamp: -1});
-          }).then(function (sleep) {
-            dbConnection.disconnect();
-            res.status(200);
-            res.json({auth: true, sleep: sleep});
-          });
-        }
+          if (numberSleep > 0 )
+          {
+            // return the sleep
+            var dbConnection = new CrowdPulse();
+            return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
+              return conn.PersonalData.find({source: /fitbit-sleep/}).limit(sleepNumber).sort({timestamp: -1});
+            }).then(function (sleep) {
+              dbConnection.disconnect();
+              res.status(200);
+              res.json({auth: true, sleep: sleep});
+            });
+
+          }
+          else if (numberSleep == 0){
+            // if the client do not specify a sleep number to read then update the user sleep
+            if (!sleepNumber) {
+              updateUserSleep(req.session.username).then(function () {
+                res.status(200);
+                res.json({auth: true});
+              });
+            }
+          }
+        });
 
       } catch(err) {
         console.log(err);
@@ -684,6 +724,83 @@ var updateUserProfile = function(username, callback) {
  * @param username
  * @param callback
  */
+var updateDailyActivity = function(username, callback) {
+
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+    return conn.Profile.findOne({username: username}, function (err, profile) {
+      if (profile) {
+        dbConnection.disconnect();
+//todo
+        var fitbitConfig = profile.identities.configs.fitbitConfig;
+        //setting data
+        var dataodierna = new Date();
+
+        var params =
+          {
+            url: API_USER_DAILY_ACTIVITY + dataodierna.toISOString().substring(0,10)+'.json',
+            headers: {'Authorization': 'Bearer ' + fitbitConfig.accessToken},
+            json: true
+          };
+        if (fitbitConfig.accessToken) {
+          // true if it is the first time user requests fitbit profile
+          var firstRequest = !profile.identities.configs.fitbitConfig.fitbitId;
+          var share = fitbitConfig.shareActivity;
+
+
+          if (firstRequest) {
+            // share default value
+            fitbitConfig.shareSleep = true;
+          }
+
+
+          // retrieve profile information about the calories
+          request.get(params, function (err, response, userActivity) {
+            if (response.statusCode !== 200) {
+              return err;
+            }
+
+            var i = 0;
+            var activityCaloriesToSave = [];
+            while (i < userActivity.activities.length) {
+              if(userActivity.activities.length > 0)
+              {
+                activityCaloriesToSave.push({
+                  deviceId: 'fitbit',
+                  username: username,
+                  timestamp: dataodierna.toISOString().substring(0,10),
+                  activityCalories: userActivity.activities[i].calories,
+                  description: userActivity.activities[i].description,
+                  distance: userActivity.activities[i].distance,
+                  nameActivity: userActivity.activities[i].name,
+                  activitySteps: userActivity.activities[i].steps,
+                  source: 'fitbit-activity',
+                  share: true
+                });
+              }
+              i++;
+            }
+
+            storeActivity(activityCaloriesToSave,username).then(function () {
+              storeActivity(activityCaloriesToSave,databaseName.globalData);
+              });
+            });
+        }
+      }
+    });
+  });
+};
+
+
+
+
+
+
+/**
+ * Update the user activities information.
+ * @param username
+ * @param callback
+ */
 var updateUserActivity = function(username, callback) {
 
   var dbConnection = new CrowdPulse();
@@ -796,8 +913,8 @@ var updateUserActivity = function(username, callback) {
 
             storeActivity(activityCaloriesToSave,username).then(function () {
               storeActivity(activityCaloriesToSave,databaseName.globalData);
-              });
             });
+          });
 
 
           // retrieve profile information about the distance
@@ -1112,6 +1229,71 @@ var updateUserBodyWeight = function(username, callback) {
 };
 
 
+/**
+ * Update the daily weight information.
+ * @param username
+ * @param callback
+ */
+var updateDailyWeight = function(username, callback) {
+
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+    return conn.Profile.findOne({username: username}, function (err, profile) {
+      if (profile) {
+        dbConnection.disconnect();
+
+        var fitbitConfig = profile.identities.configs.fitbitConfig;
+        var params =
+          {
+            url: API_USER_DAILY_BODY_AND_WEIGHT_DATA,
+            headers: {'Authorization': 'Bearer ' + fitbitConfig.accessToken},
+            json: true
+          };
+
+        if (fitbitConfig.accessToken) {
+          // true if it is the first time user requests fitbit profile
+          var firstRequest = !profile.identities.configs.fitbitConfig.fitbitId;
+          var share = fitbitConfig.shareBodyWeight;
+
+
+          // retrieve weight information about the current user
+          request.get(params, function (err, response, userWeight) {
+            if (response.statusCode !== 200) {
+              return err;
+            }
+
+            if (firstRequest) {
+              // share default value
+              fitbitConfig.shareBodyWeight = true;
+            }
+            var i = 0;
+            var weightToSave = [];
+            while (i < userWeight['body-weight'].length) {
+              if(userWeight['body-weight'][i].value > 0)
+              {
+                weightToSave.push({
+                  deviceId: 'fitbit',
+                  username: username,
+                  timestamp: new Date(userWeight['body-weight'][i].dateTime).getTime(),
+                  bodyWeight: userWeight['body-weight'][i].value,
+                  source: 'fitbit-body',
+                  nameBody: 'weight',
+                  share: true
+                });
+              }
+              i++;
+            }
+
+            storeBody(weightToSave, username).then(function () {
+              storeBody(weightToSave, databaseName.globalData);
+            });
+          });
+        }
+      }
+    });
+  });
+};
+
 
 /**
  * Update the user body and fat information.
@@ -1180,12 +1362,13 @@ var updateUserBodyFat = function(username, callback) {
 
 
 
+
 /**
- * Update the user body and BMI information.
+ * Update the daily fat information.
  * @param username
  * @param callback
  */
-var updateUserBodyBmi = function(username, callback) {
+var updateDailyFat = function(username, callback) {
 
   var dbConnection = new CrowdPulse();
   return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
@@ -1196,7 +1379,142 @@ var updateUserBodyBmi = function(username, callback) {
         var fitbitConfig = profile.identities.configs.fitbitConfig;
         var params =
           {
-            url: API_USER_BODY_AND_BMI_DATA,
+            url: API_USER_DAILY_BODY_AND_FAT_DATA,
+            headers: {'Authorization': 'Bearer ' + fitbitConfig.accessToken},
+            json: true
+          };
+
+        if (fitbitConfig.accessToken) {
+          // true if it is the first time user requests fitbit profile
+          var firstRequest = !profile.identities.configs.fitbitConfig.fitbitId;
+          var share = fitbitConfig.shareBody_Fat;
+
+
+          // retrieve fat information about the current user
+          request.get(params, function (err, response, userFat) {
+            if (response.statusCode !== 200) {
+              return err;
+            }
+
+            if (firstRequest) {
+              // share default value
+              fitbitConfig.shareBody_Fat = true;
+            }
+            var i = 0;
+            var fatToSave = [];
+            while (i < userFat['body-fat'].length) {
+              if(userFat['body-fat'][i].value > 0)
+              {
+                fatToSave.push({
+                  deviceId: 'fitbit',
+                  username: username,
+                  timestamp: new Date(userFat['body-fat'][i].dateTime).getTime(),
+                  bodyFat: userFat['body-fat'][i].value,
+                  source: 'fitbit-body',
+                  nameBody: 'fat',
+                  share: true
+                });
+              }
+              i++;
+            }
+
+            storeBody(fatToSave, username).then(function () {
+              storeBody(fatToSave, databaseName.globalData);
+            });
+          });
+        }
+      }
+    });
+  });
+};
+
+
+
+/**
+ * Update the user body and BMI information.
+ * @param username
+ * @param callback
+ */
+var updateUserBodyBmi = function(username, callback) {
+
+    var dbConnection = new CrowdPulse();
+    return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+      return conn.Profile.findOne({username: username}, function (err, profile) {
+        if (profile) {
+          dbConnection.disconnect();
+
+          var fitbitConfig = profile.identities.configs.fitbitConfig;
+          var params =
+            {
+              url: API_USER_BODY_AND_BMI_DATA,
+              headers: {'Authorization': 'Bearer ' + fitbitConfig.accessToken},
+              json: true
+            };
+
+          if (fitbitConfig.accessToken) {
+            // true if it is the first time user requests fitbit profile
+            var firstRequest = !profile.identities.configs.fitbitConfig.fitbitId;
+            var share = fitbitConfig.shareBody_Bmi;
+
+
+            // retrieve fat information about the current user
+            request.get(params, function (err, response, userBmi) {
+              if (response.statusCode !== 200) {
+                return err;
+              }
+
+              if (firstRequest) {
+                // share default value
+                fitbitConfig.shareBody_Bmi = true;
+              }
+              var i = 0;
+              var bmiToSave = [];
+              while (i < userBmi['body-bmi'].length) {
+                if(userBmi['body-bmi'][i].value > 0)
+                {
+                  bmiToSave.push({
+                    deviceId: 'fitbit',
+                    username: username,
+                    timestamp: new Date(userBmi['body-bmi'][i].dateTime).getTime(),
+                    bodyBmi: userBmi['body-bmi'][i].value,
+                    source: 'fitbit-body',
+                    nameBody: 'BMI',
+                    share: true
+                  });
+                }
+                i++;
+              }
+
+              storeBody(bmiToSave, username).then(function () {
+                storeBody(bmiToSave, databaseName.globalData);
+              });
+            });
+          }
+        }
+      });
+    });
+  };
+
+
+
+
+/**
+ * Update the daily BMI information.
+ * @param username
+ * @param callback
+ */
+var updateDailyBmi = function(username, callback) {
+
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+    return conn.Profile.findOne({username: username}, function (err, profile) {
+      if (profile) {
+        dbConnection.disconnect();
+
+        var fitbitConfig = profile.identities.configs.fitbitConfig;
+        var params =
+          {
+            url: API_USER_DAILY_BODY_AND_BMI_DATA,
             headers: {'Authorization': 'Bearer ' + fitbitConfig.accessToken},
             json: true
           };
@@ -1246,8 +1564,9 @@ var updateUserBodyBmi = function(username, callback) {
 };
 
 
+
 /**
- * Update the user food information.
+ * Update the user  food information.
  * @param username
  * @param callback
  */
@@ -1313,6 +1632,74 @@ var updateUserFood = function(username, callback) {
 
 
 /**
+ * Update the user daily food information.
+ * @param username
+ * @param callback
+ */
+var updateDailyFood = function(username, callback) {
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+    return conn.Profile.findOne({username: username}, function (err, profile) {
+      if (profile) {
+        dbConnection.disconnect();
+
+        var fitbitConfig = profile.identities.configs.fitbitConfig;
+
+        var params =
+          {
+            url: API_USER_DAILY_FOOD_DATA,
+            headers: {'Authorization': 'Bearer ' + fitbitConfig.accessToken},
+            json: true
+          };
+
+        if (fitbitConfig.accessToken) {
+          // true if it is the first time user requests fitbit profile
+          var firstRequest = !profile.identities.configs.fitbitConfig.fitbitId;
+          var share = fitbitConfig.shareFood;
+
+          // retrieve profile information about the current user
+          request.get(params, function (err, response, userFood) {
+            if (response.statusCode !== 200) {
+              return err;
+            }
+
+            if (firstRequest) {
+              // share default value
+              fitbitConfig.shareFood = true;
+            }
+
+            var i = 0;
+            var foodToSave = [];
+            while (i < userFood['foods-log-caloriesIn'].length) {
+              if(userFood['foods-log-caloriesIn'][i].value > 0)
+              {
+                foodToSave.push({
+                  deviceId: 'fitbit',
+                  username: username,
+                  timestamp: new Date(userFood['foods-log-caloriesIn'][i].dateTime).getTime(),
+                  caloriesIn: userFood['foods-log-caloriesIn'][i].value,
+                  source: 'fitbit-food',
+                  share: true
+                });
+              }
+              i++;
+            }
+
+            storeFood(foodToSave, username).then(function () {
+              storeFood(foodToSave, databaseName.globalData);
+            });
+          });
+        }
+      }
+    });
+  });
+};
+
+
+
+
+
+/**
  * Update the user friends information.
  * @param username
  * @param callback
@@ -1348,7 +1735,6 @@ var updateUserFriends = function(username, callback) {
             // share default value
             fitbitConfig.shareFriends = true;
           }
-
           var i = 0;
           var friendsToSave = [];
           while (i < userFriends.friends.length) {
@@ -1363,6 +1749,73 @@ var updateUserFriends = function(username, callback) {
 
           storeFriends(friendsToSave, username).then(function () {
             storeFriends(friendsToSave, databaseName.globalData);
+          });
+        });
+      }
+    });
+  });
+};
+
+
+
+/**
+ * Update the user friends information.
+ * @param username
+ * @param callback
+ */
+var updateDailyFriends = function(username, callback) {
+
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+    return conn.Profile.findOne({username: username}, function (err, profile) {
+      var fitbitConfig = profile.identities.configs.fitbitConfig;
+
+      var params =
+        {
+          url: API_USER_FRIENDS_DATA,
+          headers: { 'Authorization': 'Bearer ' + fitbitConfig.accessToken },
+          json: true
+        };
+
+      if (fitbitConfig.accessToken) {
+        // true if it is the first time user requests fitbit profile
+        var firstRequest = !profile.identities.configs.fitbitConfig.fitbitId;
+        var share = fitbitConfig.shareFriends;
+
+
+        // retrieve profile information about the current user
+        request.get(params, function (err, response, userFriends) {
+
+          if (response.statusCode !== 200) {
+            return err;
+          }
+
+          if (firstRequest) {
+            // share default value
+            fitbitConfig.shareFriends = true;
+          }
+          var i = 0;
+          var friendsToSave = [];
+          while (i < userFriends.friends.length) {
+            friendsToSave.push({
+              username: username,
+              contactId: userFriends.friends[i].user.encodedId,
+              contactName: userFriends.friends[i].user.displayName,
+              share: true
+            });
+            i++;
+          }
+
+          // return the friends
+          var dbConnection = new CrowdPulse();
+          return dbConnection.connect(config.database.url, username).then(function (conn) {
+            return conn.Connection.find({contactName: {$not: userFriends.friends[0].user.displayName}});
+          }).then(function (friends) {
+            dbConnection.disconnect();
+            storeFriends(friendsToSave, username).then(function () {
+            storeFriends(friendsToSave, databaseName.globalData);
+
+          });
           });
         });
       }
@@ -1444,6 +1897,81 @@ var updateUserHeartRate = function(username, callback) {
 
 
 /**
+ * Update the user daily heart rate information.
+ * @param username
+ * @param callback
+ */
+var updateDailyHeartRate = function(username, callback) {
+
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+    return conn.Profile.findOne({username: username}, function (err, profile) {
+      if (profile) {
+        dbConnection.disconnect();
+
+        var fitbitConfig = profile.identities.configs.fitbitConfig;
+
+        var params =
+          {
+            url: API_USER_DAILY_HEARTRATE_DATA,
+            headers: {'Authorization': 'Bearer ' + fitbitConfig.accessToken},
+            json: true
+          };
+
+        if (fitbitConfig.accessToken) {
+          // true if it is the first time user requests fitbit profile
+          var firstRequest = !profile.identities.configs.fitbitConfig.fitbitId;
+          var share = fitbitConfig.shareHeartRate;
+
+
+          // retrieve profile information about the current user
+          request.get(params, function (err, response, userHeart) {
+            if (response.statusCode !== 200) {
+              return err;
+            }
+
+            if (firstRequest) {
+              // share default value
+              fitbitConfig.shareHeartRate = true;
+            }
+
+            var i = 0;
+            var heartToSave = [];
+            while (i < userHeart['activities-heart'].length) {
+              if(userHeart['activities-heart'][i].value.restingHeartRate > 0)
+              {
+                heartToSave.push({
+                  deviceId: 'fitbit',
+                  username: username,
+                  timestamp: new Date(userHeart['activities-heart'][i].dateTime).getTime(),
+                  restingHeartRate: userHeart['activities-heart'][i].value.restingHeartRate,
+                  outOfRange_minutes: userHeart['activities-heart'][i].value.heartRateZones[0].minutes,
+                  fatBurn_minutes: userHeart['activities-heart'][i].value.heartRateZones[1].minutes,
+                  cardio_minutes: userHeart['activities-heart'][i].value.heartRateZones[2].minutes,
+                  peak_minutes: userHeart['activities-heart'][i].value.heartRateZones[3].minutes,
+                  source: 'fitbit-heart',
+                  share: true
+                });
+              }
+              i++;
+            }
+
+            storeHeart(heartToSave, username).then(function () {
+              storeHeart(heartToSave, databaseName.globalData);
+            });
+          });
+        }
+      }
+    });
+  });
+};
+
+
+
+
+
+
+/**
  * Update the user sleep information.
  * @param username
  * @param callback
@@ -1486,6 +2014,81 @@ var updateUserSleep = function(username, callback) {
               fitbitConfig.shareSleep = true;
             }
 
+            var i = 0;
+            var sleepToSave = [];
+            while (i < userSleep.sleep.length) {
+              if(userSleep.sleep[i].duration > 0)
+              {
+                sleepToSave.push({
+                  deviceId: 'fitbit',
+                  username: username,
+                  timestamp: new Date(userSleep.sleep[i].startTime).getTime(),
+                  duration: userSleep.sleep[i].duration,
+                  efficiency: userSleep.sleep[i].efficiency,
+                  minutesAfterWakeup: userSleep.sleep[i].minutesAfterWakeup,
+                  minutesAsleep: userSleep.sleep[i].minutesAsleep,
+                  minutesAwake: userSleep.sleep[i].minutesAwake,
+                  minutesToFallAsleep: userSleep.sleep[i].minutesToFallAsleep,
+                  timeInBed: userSleep.sleep[i].timeInBed,
+                  source: 'fitbit-sleep',
+                  share: true
+                });
+              }
+              i++;
+            }
+
+            storeSleep(sleepToSave, username).then(function () {
+              storeSleep(sleepToSave, databaseName.globalData);
+            });
+          });
+        }
+      }
+    });
+  });
+};
+
+
+
+/**
+ * Update daily user sleep information.
+ * @param username
+ * @param callback
+ */
+var updateDailySleep = function(username, callback) {
+
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+    return conn.Profile.findOne({username: username}, function (err, profile) {
+      if (profile) {
+        dbConnection.disconnect();
+
+        var fitbitConfig = profile.identities.configs.fitbitConfig;
+        //setting data
+        var dataodierna = new Date();
+
+        var params =
+          {
+            url: API_USER_SLEEP_DATA + dataodierna.toISOString().substring(0,10)+'.json',
+            headers: {'Authorization': 'Bearer ' + fitbitConfig.accessToken},
+            json: true
+          };
+
+        if (fitbitConfig.accessToken) {
+          // true if it is the first time user requests fitbit profile
+          var firstRequest = !profile.identities.configs.fitbitConfig.fitbitId;
+          var share = fitbitConfig.shareSleep;
+
+
+          // retrieve profile information about the current user
+          request.get(params, function (err, response, userSleep) {
+            if (response.statusCode !== 200) {
+              return err;
+            }
+
+            if (firstRequest) {
+              // share default value
+              fitbitConfig.shareSleep = true;
+            }
             var i = 0;
             var sleepToSave = [];
             while (i < userSleep.sleep.length) {
@@ -1829,3 +2432,11 @@ exports.updateUserFood = updateUserFood;
 exports.updateUserFriends = updateUserFriends;
 exports.updateUserHeartRate = updateUserHeartRate;
 exports.updateUserSleep = updateUserSleep;
+exports.updateDailySleep = updateDailySleep;
+exports.updateDailyActivity = updateDailyActivity;
+exports.updateDailyHeartRate = updateDailyHeartRate;
+exports.updateDailyFriends = updateDailyFriends;
+exports.updateDailyFood = updateDailyFood;
+exports.updateDailyWeight = updateDailyWeight;
+exports.updateDailyFat = updateDailyFat;
+exports.updateDailyBmi = updateDailyBmi;
