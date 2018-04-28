@@ -51,11 +51,6 @@ const API_USER_ACTIVITY_ACTIVITY_CALORIES = 'https://api.fitbit.com/1/user/-/act
 
 
 
-
-
-
-
-
 exports.endpoint = function() {
 
   /**

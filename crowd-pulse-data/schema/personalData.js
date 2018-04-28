@@ -39,7 +39,7 @@ var PersonalDataSchema = builder(schemas.personalData, {
   minutesAwake: Number,
   minutesToFallAsleep: Number,
   timeInBed: Number,
-  //Heart Rate
+  //HeartRate
 	restingHeartRate: Number,
   peak_minutes: Number,
   cardio_minutes: Number,
