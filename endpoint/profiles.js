@@ -90,8 +90,8 @@ module.exports = function() {
 
                     demographics : "Information not shared by the user", // From Profile.demographics collection
                     affects : "Information not shared by the user", // From Message (Sentiment + Emotion) collection
-                    behavior : "Information not shared by the user", // From Message collection *
-                    cognitiveAspects : "Information not shared by the user", // From Profile.personalities collection
+                    behavior : "Information not shared by the user", // From Message (Long e Lat) collection
+                    cognitiveAspects : "Information not shared by the user", // From Profile.personalities and Profile.empathies collection
                     interest : "Information not shared by the user", // From Interest collection
                     physicalState : "Information not shared by the user", // From PersonalData, heart-rate and sleep
                     socialRelations : "Information not shared by the user" // From Connection collection
@@ -121,6 +121,7 @@ module.exports = function() {
                                 }
 
                                 // GET USER COGNITIVE ASPECTS COLLECTION
+                                //TODO Add empathies values
                                 if (holisticConfig.shareCognitiveAspects) {
                                     if (user.personalities) {
                                         myData.cognitiveAspects = user.personalities;
@@ -203,8 +204,8 @@ module.exports = function() {
                     // GET USER PHYSICAL STATE COLLECTION
                     .then(function () {
                         if (holisticConfig.sharePhysicalState) {
-                            //TODO USER PHYSICAL STATE
-                            /*return dbConn.connect(config.database.url, myData.user)
+                            //TODO USER PHYSICAL STATE (Missing Fitbit integration in this version)
+                            return dbConn.connect(config.database.url, myData.user)
                                 .then(function (connection) {
                                     return connection.PersonalData.find({}, {
 
@@ -217,7 +218,7 @@ module.exports = function() {
                                 })
                                 .finally(function () {
                                     dbConn.disconnect();
-                                })*/
+                                })
                         }
                     })
                     // GET USER SOCIAL RELATIONS COLLECTION
