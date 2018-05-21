@@ -6,7 +6,7 @@
   },
   "crowd-pulse": {
     "main": "/opt/crowd-pulse/build/install/crowd-pulse/bin/crowd-pulse",
-    "projects": []
+    "projects": ["complete-pipeline", "app-categorize", "personality-detector", "empathy-detector"]
   },
   "logs": {
     "path": "/opt/crowd-pulse/logs"
@@ -14,9 +14,13 @@
   "session": {
     "secret": "secret-test-to-change-to-more-security"
   },
+  "androidAppBlackList": ["com.android.launcher3", "com.swapuniba.crowdpulse", "com.google.android.packageinstaller",
+    "com.android.settings", "com.google.android.setupwizard", "com.android.systemui"],
   "batch": {
-    "cleaningPersonalDataTimeout": "30 * * * *",
+    "cleaningPersonalDataTimeout": "*/10 * * * *",
+    "crowdPulseRunTimeout": "30 0 * * *",
     "socialProfileTimeout": "0 0 * * *",
-    "demographicsTimeout": "* * 1 * *"
+    "demographicsTimeout": "0 0 1 * *",
+    "interestsTimeout": "0 0 * * *"
   }
 }

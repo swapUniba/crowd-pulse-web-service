@@ -8,6 +8,7 @@ var TwitterProfileSchema = require('./../schema/twitterProfile');
 var FacebookProfileSchema = require('./../schema/facebookProfile');
 var FitbitProfileSchema = require('./../schema/fitbitProfile');
 var LinkedInProfileSchema = require('./../schema/linkedinProfile');
+var InstagramProfileSchema = require('./../schema/instagramProfile');
 var DemographicsSchema = require('./demographic');
 
 var schemas = require('./schemaName');
@@ -36,6 +37,7 @@ var ProfileSchema = builder(schemas.profile, {
     facebook: FacebookProfileSchema,
     fitbit: FitbitProfileSchema,
     linkedIn: LinkedInProfileSchema,
+    instagram: InstagramProfileSchema,
     devices: [
       {
         deviceId: String,
@@ -104,6 +106,13 @@ var ProfileSchema = builder(schemas.profile, {
         expiresIn: Number,
         shareProfile: Boolean
       },
+      instagramConfig: {
+        instagramId: String,
+        accessToken: String,
+        lastPostId: String,
+        shareProfile: Boolean,
+        shareMessages: Boolean
+      },
       devicesConfig: [
         {
           deviceId: String,
@@ -132,7 +141,22 @@ var ProfileSchema = builder(schemas.profile, {
     }
   },
   demographics: DemographicsSchema,
-  interests: [schemas.interest]
+  personalities: [{
+    openness: Number,
+    conscientiousness: Number,
+    extroversion: Number,
+    agreeableness: Number,
+    neuroticism: Number,
+    timestamp: Number,
+    source: String,
+    confidence: Number
+  }],
+  empathies: [{
+    value: Number,
+    timestamp: Number,
+    source: String,
+    confidence: Number
+  }]
 });
 
 ProfileSchema.statics.newFromObject = function(object) {
@@ -245,6 +269,91 @@ ProfileSchema.statics.search = function(username) {
     }
   ];
   return Q(model.aggregate(aggregations).exec());
+};
+
+ProfileSchema.statics.demographicsLocation = function () {
+  var aggregations = [
+    {
+      $match: {
+        'identities.configs.holisticProfileConfig': {$exists: true},
+        'identities.configs.holisticProfileConfig.shareDemographics': true,
+        'demographics.location': {$exists: true}
+      }
+    }
+  ];
+  return Q(this.aggregate(aggregations).exec()).then(function (profiles) {
+    var results = {};
+    if (profiles) {
+      profiles.forEach(function (profile) {
+        if (profile.demographics.location.length > 0) {
+          var location = profile.demographics.location.sort(function (a, b) {
+            return  b.timestamp - a.timestamp;
+          })[0].value;
+          if (location) {
+            results[location] = results[location] ? ++results[location] : 1;
+          }
+        }
+      });
+    }
+    return Q(results);
+  });
+};
+
+ProfileSchema.statics.demographicsGender = function () {
+  var aggregations = [
+    {
+      $match: {
+        'identities.configs.holisticProfileConfig': {$exists: true},
+        'identities.configs.holisticProfileConfig.shareDemographics': true,
+        'demographics.gender': {$exists: true}
+      }
+    }
+  ];
+  return Q(this.aggregate(aggregations).exec()).then(function (profiles) {
+    var results = {};
+    if (profiles) {
+      profiles.forEach(function (profile) {
+        if (profile.demographics.gender) {
+          var gender = profile.demographics.gender.value;
+          results[gender] = results[gender] ? ++results[gender] : 1;
+        }
+      });
+    }
+    return Q(results);
+  });
+};
+
+ProfileSchema.statics.demographicsLanguage = function () {
+  var aggregations = [
+    {
+      $match: {
+        'identities.configs.holisticProfileConfig': {$exists: true},
+        'identities.configs.holisticProfileConfig.shareDemographics': true,
+        'demographics.language': {$exists: true}
+      }
+    }
+  ];
+  return Q(this.aggregate(aggregations).exec()).then(function (profiles) {
+    var results = {};
+    if (profiles) {
+      profiles.forEach(function (profile) {
+        if (profile.demographics.language.length > 0) {
+          var sortedLanguages = profile.demographics.language.sort(function (a, b) {
+            return  b.timestamp - a.timestamp;
+          });
+
+          for (var i = 0; i < sortedLanguages.length; i++) {
+            results[sortedLanguages[i].value] = results[sortedLanguages[i].value] ? ++results[sortedLanguages[i].value] : 1;
+
+            if (sortedLanguages[i].timestamp !== sortedLanguages[0].timestamp) {
+              break;
+            }
+          }
+        }
+      });
+    }
+    return Q(results);
+  });
 };
 
 module.exports = ProfileSchema;
