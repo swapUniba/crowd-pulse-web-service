@@ -80,21 +80,38 @@ module.exports = function() {
      *    mode - JSON or RDF
      */
     router.route('/profile/:username')
-        .get(function(req, res) {
+        .get(function (req, res) {
+            //TODO Add query filter here
+            // FILTER:
+            // Limit (req.query.l):
+            let l = Number.MAX_SAFE_INTEGER;
+
+            // FromDate and ToDate (req.query.from and req.query.to):
+            // Timestamp (req.query.timestamp):
+            // CollectionType (req.query.c):
+            let c = "all";
+
+            if(req.query.l) {
+                l = req.query.l;
+            }
+            if(req.query.c) {
+                c = req.query.c;
+            }
+
             if (req.params.username) {
                 let dbConn = new CrowdPulse();
 
                 // JSON pattern
                 let myData = {
-                    user : req.params.username,
+                    user: req.params.username,
 
-                    demographics : "Information not shared by the user", // From Profile.demographics collection
-                    affects : "Information not shared by the user", // From Message (Sentiment + Emotion) collection
-                    behavior : "Information not shared by the user", // From Message (Long e Lat) collection
-                    cognitiveAspects : "Information not shared by the user", // From Profile.personalities and Profile.empathies collection
-                    interest : "Information not shared by the user", // From Interest collection
-                    physicalState : "Information not shared by the user", // From PersonalData, heart-rate and sleep
-                    socialRelations : "Information not shared by the user" // From Connection collection
+                    demographics: "Information not shared by the user", // From Profile.demographics collection
+                    affects: "Information not shared by the user", // From Message (Sentiment + Emotion) collection
+                    behavior: "Information not shared by the user", // From Message (Text, Long, Lat and Date) collection
+                    cognitiveAspects: "Information not shared by the user", // From Profile.personalities and Profile.empathies collection
+                    interest: "Information not shared by the user", // From Interest collection
+                    physicalState: "Information not shared by the user", // From PersonalData, heart-rate and sleep
+                    socialRelations: "Information not shared by the user" // From Connection collection
                 };
 
                 // Save holistic configuration from user's profile
@@ -112,134 +129,160 @@ module.exports = function() {
                                 // Get username
                                 myData.user = req.params.username;
 
-                                // GET USER DEMOGRAPHICS COLLECTION
-                                if (holisticConfig.shareDemographics) {
-                                    if (user.demographics) {
-                                        myData.demographics = user.demographics;
+                                if(c === "all" || c === "Demographics") {
+                                    // GET USER DEMOGRAPHICS COLLECTION
+                                    if (holisticConfig.shareDemographics) {
+                                        if (user.demographics) {
+                                            myData.demographics = user.demographics;
+                                        }
+                                        else myData.demographics = "Missing information";
                                     }
-                                    else myData.demographics = "Missing information";
                                 }
 
-                                // GET USER COGNITIVE ASPECTS COLLECTION
-                                //TODO Add empathies values
-                                if (holisticConfig.shareCognitiveAspects) {
-                                    if (user.personalities) {
-                                        myData.cognitiveAspects = user.personalities;
+                                if(c === "all" || c === "CognitiveAspects") {
+                                    // GET USER COGNITIVE ASPECTS COLLECTION
+                                    if (holisticConfig.shareCognitiveAspects) {
+                                        if (user.personalities) {
+                                            myData.cognitiveAspects = {};
+                                            myData.cognitiveAspects.personalities = user.personalities.slice(0, parseInt(l));
+                                            myData.cognitiveAspects.empathies = user.empathies.slice(0, parseInt(l));
+                                        }
+                                        else myData.cognitiveAspects = "Missing information";
                                     }
-                                    else myData.cognitiveAspects = "Missing information";
                                 }
 
                                 dbConn.disconnect();
                             }
-                        });
+                        })
                     })
                     // GET USER AFFECTS COLLECTION
                     .then(function () {
-                        if (holisticConfig.shareAffects) {
-                            return dbConn.connect(config.database.url, myData.user)
-                                .then(function(connection) {
-                                    return connection.Message.find({}, {
-                                        _id: 0,
-                                        date: 1,
-                                        sentiment: 1,
-                                        emotion: 1
-                                    }, function (err, profile) {
-                                        if(profile) {
-                                            myData.affects = profile;
-                                        }
-                                        else myData.affects = "Missing information";
+                        if(c === "all" || c === "Affects") {
+                            if (holisticConfig.shareAffects) {
+                                return dbConn.connect(config.database.url, myData.user)
+                                    .then(function (connection) {
+                                        return connection.Message.find({}, {
+                                            _id: 0,
+                                            date: 1,
+                                            sentiment: 1,
+                                            emotion: 1
+                                        }, function (err, profile) {
+                                            if (profile) {
+                                                myData.affects = profile;
+                                            }
+                                            else myData.affects = "Missing information";
+                                        }).limit(parseInt(l));
                                     })
-                                })
-                                .finally(function () {
-                                    dbConn.disconnect();
-                                })
+                                    .finally(function () {
+                                        dbConn.disconnect();
+                                    })
+                            }
                         }
                     })
                     // GET USER BEHAVIOR COLLECTION
                     .then(function () {
-                        if (holisticConfig.shareBehavior) {
-                            return dbConn.connect(config.database.url, myData.user)
-                                .then(function (connection) {
-                                    return connection.Message.find({}, {
-                                        _id: 0,
-                                        text: 1,
-                                        latitude: 1,
-                                        longitude: 1,
-                                        date: 1,
-                                        fromUser: 1
-                                    }, function (err, profile) {
-                                        if (profile) {
-                                            myData.behavior = profile;
-                                        }
-                                        else myData.behavior = "Missing information";
+                        if(c === "all" || c === "Behavior") {
+                            if (holisticConfig.shareBehavior) {
+                                return dbConn.connect(config.database.url, myData.user)
+                                    .then(function (connection) {
+                                        return connection.Message.find({}, {
+                                            _id: 0,
+                                            text: 1,
+                                            latitude: 1,
+                                            longitude: 1,
+                                            date: 1
+                                        }, function (err, profile) {
+                                            if (profile) {
+                                                myData.behavior = profile;
+                                            }
+                                            else myData.behavior = "Missing information";
+                                        }).limit(parseInt(l));
                                     })
-                                })
-                                .finally(function () {
-                                    dbConn.disconnect();
-                                })
+                                    .finally(function () {
+                                        dbConn.disconnect();
+                                    })
+                            }
                         }
                     })
                     // GET USER INTERESTS COLLECTION
                     .then(function () {
-                        if (holisticConfig.shareInterest) {
-                            return dbConn.connect(config.database.url, myData.user)
-                                .then(function (connection) {
-                                    return connection.Interest.find({}, {
-                                        _id: 0,
-                                        value: 1,
-                                        confidence: 1,
-                                        timestamp : 1
-                                    }, function (err, profile) {
-                                        if (profile) {
-                                            myData.interest = profile;
-                                        }
-                                        else myData.interest = "Missing information";
+                        if(c === "all" || c === "Interest") {
+                            if (holisticConfig.shareInterest) {
+                                return dbConn.connect(config.database.url, myData.user)
+                                    .then(function (connection) {
+                                        return connection.Interest.find({}, {
+                                            _id: 0,
+                                            value: 1,
+                                            confidence: 1,
+                                            timestamp: 1
+                                        }, function (err, profile) {
+                                            if (profile) {
+                                                myData.interest = profile;
+                                            }
+                                            else myData.interest = "Missing information";
+                                        }).limit(parseInt(l));
                                     })
-                                })
-                                .finally(function () {
-                                    dbConn.disconnect();
-                                })
+                                    .finally(function () {
+                                        dbConn.disconnect();
+                                    })
+                            }
                         }
                     })
                     // GET USER PHYSICAL STATE COLLECTION
                     .then(function () {
-                        if (holisticConfig.sharePhysicalState) {
-                            //TODO USER PHYSICAL STATE (Missing Fitbit integration in this version)
-                            return dbConn.connect(config.database.url, myData.user)
-                                .then(function (connection) {
-                                    return connection.PersonalData.find({}, {
-
-                                    }, function (err, profile) {
-                                        if (profile) {
-                                            myData.physicalState = profile;
-                                        }
-                                        else myData.physicalState = "Missing information";
+                        if(c === "all" || c === "PhysicalState") {
+                            if (holisticConfig.sharePhysicalState) {
+                                return dbConn.connect(config.database.url, myData.user)
+                                    .then(function (connection) {
+                                        return connection.PersonalData.find({}, {
+                                            _id: 0,
+                                            timestamp: 1,
+                                            restingHeartRate: 1,
+                                            peak_minutes: 1,
+                                            cardio_minutes: 1,
+                                            fatBurn_minutes: 1,
+                                            outOfRange_minutes: 1,
+                                            duration: 1,
+                                            efficiency: 1,
+                                            minutesAfterWakeup: 1,
+                                            minutesAsleep: 1,
+                                            minutesAwake: 1,
+                                            minutesToFallAsleep: 1,
+                                            timeInBed: 1
+                                        }, function (err, profile) {
+                                            if (profile) {
+                                                myData.physicalState = profile;
+                                            }
+                                            else myData.physicalState = "Missing information";
+                                        }).limit(parseInt(l));
                                     })
-                                })
-                                .finally(function () {
-                                    dbConn.disconnect();
-                                })
+                                    .finally(function () {
+                                        dbConn.disconnect();
+                                    })
+                            }
                         }
                     })
                     // GET USER SOCIAL RELATIONS COLLECTION
                     .then(function () {
-                        if(holisticConfig.shareSocialRelations) {
-                            return dbConn.connect(config.database.url, myData.user)
-                                .then(function (connection) {
-                                    return connection.Connection.find({}, {
-                                        _id: 0,
-                                        contactId: 1,
-                                        source: 1
-                                    }, function (err, profile) {
-                                        if (profile) {
-                                            myData.socialRelations = profile;
-                                        }
-                                        else myData.socialRelations = "Missing information";
+                        if(c === "all" || c === "SocialRelations") {
+                            if (holisticConfig.shareSocialRelations) {
+                                return dbConn.connect(config.database.url, myData.user)
+                                    .then(function (connection) {
+                                        return connection.Connection.find({}, {
+                                            _id: 0,
+                                            contactId: 1,
+                                            source: 1
+                                        }, function (err, profile) {
+                                            if (profile) {
+                                                myData.socialRelations = profile;
+                                            }
+                                            else myData.socialRelations = "Missing information";
+                                        }).limit(parseInt(l));
                                     })
-                                })
-                                .finally(function () {
-                                    dbConn.disconnect();
-                                })
+                                    .finally(function () {
+                                        dbConn.disconnect();
+                                    })
+                            }
                         }
 
                     })
@@ -252,13 +295,12 @@ module.exports = function() {
                         dbConn.disconnect();
                     });
 
-            } else {
-                res.status(404);
-                res.json({
-                    auth: true,
-                    message: 'Username not found.'
-                });
             }
+            res.status(404);
+            res.json({
+                auth: true,
+                message: 'Username not found.'
+            });
         });
 
     /**
