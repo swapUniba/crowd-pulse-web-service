@@ -77,7 +77,10 @@ module.exports = function() {
      * Get public information associated with a user's profile (including holistic profile data).
      * Params:
      *    username - the user name
-     *    mode - JSON or RDF
+     *    l - the limit of querying result
+     *    c - the specific collection
+     *    
+     *    mode - JSON or JSON-LD
      */
     router.route('/profile/:username')
         .get(function (req, res) {
@@ -86,14 +89,17 @@ module.exports = function() {
             // Limit (req.query.l):
             let l = Number.MAX_SAFE_INTEGER;
 
-            // FromDate and ToDate (req.query.from and req.query.to):
-            // Timestamp (req.query.timestamp):
-            // CollectionType (req.query.c):
-            let c = "all";
-
             if(req.query.l) {
                 l = req.query.l;
             }
+
+            // FromDate and ToDate (req.query.from and req.query.to):
+
+            // Timestamp (req.query.timestamp):
+
+            // CollectionType (req.query.c):
+            let c = "all";
+
             if(req.query.c) {
                 c = req.query.c;
             }
