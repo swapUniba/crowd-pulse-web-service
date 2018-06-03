@@ -78,13 +78,13 @@ module.exports = function() {
      * Params:
      *    username - the user name
      *    l - the limit of querying result
+     *    fromDate, toDate - temporal filter in date format
      *    c - the specific collection
-     *    
+     *
      *    mode - JSON or JSON-LD
      */
     router.route('/profile/:username')
         .get(function (req, res) {
-            //TODO Add query filter here
             // FILTER:
             // Limit (req.query.l):
             let l = Number.MAX_SAFE_INTEGER;
@@ -93,9 +93,31 @@ module.exports = function() {
                 l = req.query.l;
             }
 
-            // FromDate and ToDate (req.query.from and req.query.to):
+            // fromDate and toDate (req.query.from and req.query.to):
+            let temporalFilter = {
+                date: "",
+                timestamp: ""
+            };
 
-            // Timestamp (req.query.timestamp):
+            if(req.query.fromDate) {
+                temporalFilter.date = "$gte: ISODate(\"" + req.query.fromDate + "\")";
+                temporalFilter.timestamp = "$gte: " + Math.round(new Date(req.query.fromDate).getTime()/1000.0);
+            }
+            if(req.query.toDate) {
+                if (temporalFilter.date) {
+                    temporalFilter.date += ", $lte: ISODate(\"" + req.query.toDate + "\")";
+                }
+                else {
+                    temporalFilter.date += "$lte: ISODate(\"" + req.query.toDate + "\")";
+                }
+
+                if (temporalFilter.timestamp) {
+                    temporalFilter.timestamp += ", $lte: " + Math.round(new Date(req.query.toDate).getTime()/1000.0);
+                }
+                else {
+                    temporalFilter.timestamp += "$lte: " + Math.round(new Date(req.query.toDate).getTime()/1000.0);
+                }
+            }
 
             // CollectionType (req.query.c):
             let c = "all";
@@ -114,9 +136,17 @@ module.exports = function() {
                     demographics: "Information not shared by the user", // From Profile.demographics collection
                     affects: "Information not shared by the user", // From Message (Sentiment + Emotion) collection
                     behavior: "Information not shared by the user", // From Message (Text, Long, Lat and Date) collection
-                    cognitiveAspects: "Information not shared by the user", // From Profile.personalities and Profile.empathies collection
+                    cognitiveAspects: {
+                        personalities: "Information not shared by the user",
+                        empathies: "Information not shared by the user"
+                    }, // From Profile.personalities and Profile.empathies collection
                     interest: "Information not shared by the user", // From Interest collection
-                    physicalState: "Information not shared by the user", // From PersonalData, heart-rate and sleep
+                    physicalState: {
+                        heart: "Information not shared by the user",
+                        sleep: "Information not shared by the user",
+                        food: "Information not shared by the user",
+                        body: "Information not shared by the user"
+                    }, // From PersonalData, heart-rate and sleep
                     socialRelations: "Information not shared by the user" // From Connection collection
                 };
 
@@ -149,7 +179,6 @@ module.exports = function() {
                                     // GET USER COGNITIVE ASPECTS COLLECTION
                                     if (holisticConfig.shareCognitiveAspects) {
                                         if (user.personalities) {
-                                            myData.cognitiveAspects = {};
                                             myData.cognitiveAspects.personalities = user.personalities.slice(0, parseInt(l));
                                             myData.cognitiveAspects.empathies = user.empathies.slice(0, parseInt(l));
                                         }
@@ -186,6 +215,7 @@ module.exports = function() {
                         }
                     })
                     // GET USER BEHAVIOR COLLECTION
+                    // TODO: AGGIUNGERE ACTIVITY DI FITBIT IN BEHAVIOR
                     .then(function () {
                         if(c === "all" || c === "Behavior") {
                             if (holisticConfig.shareBehavior) {
@@ -239,28 +269,86 @@ module.exports = function() {
                         if(c === "all" || c === "PhysicalState") {
                             if (holisticConfig.sharePhysicalState) {
                                 return dbConn.connect(config.database.url, myData.user)
+                                    // TAKE HEART-RATE VALUES
                                     .then(function (connection) {
-                                        return connection.PersonalData.find({}, {
+                                        return connection.PersonalData.find({source: /fitbit-heart/}, {
                                             _id: 0,
                                             timestamp: 1,
                                             restingHeartRate: 1,
                                             peak_minutes: 1,
                                             cardio_minutes: 1,
                                             fatBurn_minutes: 1,
-                                            outOfRange_minutes: 1,
-                                            duration: 1,
-                                            efficiency: 1,
-                                            minutesAfterWakeup: 1,
-                                            minutesAsleep: 1,
-                                            minutesAwake: 1,
-                                            minutesToFallAsleep: 1,
-                                            timeInBed: 1
+                                            outOfRange_minutes: 1
                                         }, function (err, profile) {
                                             if (profile) {
-                                                myData.physicalState = profile;
+                                                myData.physicalState.heart = profile;
                                             }
-                                            else myData.physicalState = "Missing information";
+                                            else myData.physicalState.heart = "Missing information";
                                         }).limit(parseInt(l));
+                                    })
+                                    // TAKE SLEEP VALUES
+                                    .then(function () {
+                                        return dbConn.connect(config.database.url, myData.user)
+                                            .then(function (connection) {
+                                                return connection.PersonalData.find({source: /fitbit-sleep/}, {
+                                                    _id: 0,
+                                                    timestamp: 1,
+                                                    duration: 1,
+                                                    efficiency: 1,
+                                                    minutesAfterWakeup: 1,
+                                                    minutesAsleep: 1,
+                                                    minutesAwake: 1,
+                                                    minutesToFallAsleep: 1,
+                                                    timeInBed: 1,
+                                                }, function (err, profile) {
+                                                    if (profile) {
+                                                        myData.physicalState.sleep = profile;
+                                                    }
+                                                    else myData.physicalState.sleep = "Missing information";
+                                                }).limit(parseInt(l));
+                                            })
+                                    })
+                                    // TAKE FOOD VALUES
+                                    .then(function () {
+                                        return dbConn.connect(config.database.url, myData.user)
+                                            .then(function (connection) {
+                                                return connection.PersonalData.find({source: /fitbit-food/}, {
+                                                    _id: 0,
+                                                    timestamp: 1,
+                                                    caloriesIn: 1,
+                                                    calories: 1,
+                                                    carbs: 1,
+                                                    fat: 1,
+                                                    fiber: 1,
+                                                    protein: 1,
+                                                    sodium: 1,
+                                                    water: 1,
+                                                }, function (err, profile) {
+                                                    if (profile) {
+                                                        myData.physicalState.food = profile;
+                                                    }
+                                                    else myData.physicalState.food = "Missing information";
+                                                }).limit(parseInt(l));
+                                            })
+                                    })
+                                    // TAKE BODY VALUES
+                                    .then(function () {
+                                        return dbConn.connect(config.database.url, myData.user)
+                                            .then(function (connection) {
+                                                return connection.PersonalData.find({source: /fitbit-body/}, {
+                                                    _id: 0,
+                                                    timestamp: 1,
+                                                    bodyFat: 1,
+                                                    bodyWeight: 1,
+                                                    bodyBmi: 1,
+                                                    nameBody: 1
+                                                }, function (err, profile) {
+                                                    if (profile) {
+                                                        myData.physicalState.body = profile;
+                                                    }
+                                                    else myData.physicalState.body = "Missing information";
+                                                }).limit(parseInt(l));
+                                            })
                                     })
                                     .finally(function () {
                                         dbConn.disconnect();
