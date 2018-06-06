@@ -180,18 +180,21 @@ module.exports = function() {
                                             {$project: {
                                                     _id: 0,
                                                     personalities: {
-                                                        $filter: {
-                                                            input: "$personalities",
-                                                            as: "p",
-                                                            cond: { $and: [
-                                                                    { $gte: [ "$$p.timestamp", 1523268777924 ] },
-                                                                    { $lte: [ "$$p.timestamp", 1523968777924 ] }
-                                                                ] }
-                                                        }
+                                                        $slice: [{
+                                                            $filter: {
+                                                                input: "$personalities",
+                                                                as: "p",
+                                                                cond: {
+                                                                    $and: [
+                                                                        { $gte: [ "$$p.timestamp", minDate.getTime()/1000 ] },
+                                                                        { $lte: [ "$$p.timestamp", maxDate.getTime()/1000 ] }
+                                                                    ]}
+                                                            }
+                                                        }, parseInt(l)]
                                                     }
                                                 }
                                             }
-                                        ).exec((err, profile) => {
+                                            ).exec((err, profile) => {
                                             if (profile) {
                                                 myData.cognitiveAspects.personalities = profile[0]["personalities"];
                                             }
@@ -215,16 +218,17 @@ module.exports = function() {
                                             {$project: {
                                                     _id: 0,
                                                     empathies: {
-                                                        $filter: {
-                                                            input: "$empathies",
-                                                            as: "e",
-                                                            cond: {
-                                                                $and: [
-                                                                    { $gte: [ "$$e.timestamp", minDate.getTime()/1000 ] },
-                                                                    { $lte: [ "$$e.timestamp", maxDate.getTime()/1000 ] }
-                                                                ]
+                                                        $slice: [{
+                                                            $filter: {
+                                                                input: "$empathies",
+                                                                as: "e",
+                                                                cond: {
+                                                                    $and: [
+                                                                        { $gte: [ "$$e.timestamp", minDate.getTime()/1000 ] },
+                                                                        { $lte: [ "$$e.timestamp", maxDate.getTime()/1000 ] }
+                                                                    ]}
                                                             }
-                                                        }
+                                                        }, parseInt(l)]
                                                     }
                                                 }
                                             }
