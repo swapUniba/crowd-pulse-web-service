@@ -341,6 +341,34 @@ exports.endpoint = function() {
 
 
   /**
+   * Get Fitbit user weight from Myrror -> Profile -> Data.
+   */
+  router.route('/fitbit/weight_date')
+    .post(function (req, res) {
+      try {
+        var weightsNumber = req.body.weightsNumber;
+        var dateFrom = new Date(req.body.dateFrom).getTime();
+        var dateTo = new Date(req.body.dateTo).getTime();
+
+        // return the weight between data range
+        var dbConnection = new CrowdPulse();
+        return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
+          return conn.PersonalData.find({ $and: [{nameBody:/weight/},{ timestamp: { $gte: dateFrom, $lte: dateTo}} ]}).limit(weightsNumber).sort({timestamp: -1});
+        }).then(function (weights) {
+          dbConnection.disconnect();
+          res.status(200);
+          res.json({auth: true, weights: weights});
+        });
+
+      } catch(err) {
+        console.log(err);
+        res.sendStatus(500);
+      }
+    });
+
+
+
+  /**
    * Get Fitbit user Body & Fat.
    */
   router.route('/fitbit/body_fat')
@@ -372,6 +400,35 @@ exports.endpoint = function() {
         res.sendStatus(500);
       }
     });
+
+
+
+  /**
+  * Get Fitbit user fats from Myrror -> Profile -> Data.
+  */
+  router.route('/fitbit/fat_date')
+    .post(function (req, res) {
+      try {
+        var fatsNumber = req.body.fatsNumber;
+        var dateFrom = new Date(req.body.dateFrom).getTime();
+        var dateTo = new Date(req.body.dateTo).getTime();
+
+        // return the fat between data range
+        var dbConnection = new CrowdPulse();
+        return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
+          return conn.PersonalData.find({ $and: [{nameBody:/fat/},{ timestamp: { $gte: dateFrom, $lte: dateTo}} ]}).limit(fatsNumber).sort({timestamp: -1});
+        }).then(function (fats) {
+          dbConnection.disconnect();
+          res.status(200);
+          res.json({auth: true, fats: fats});
+        });
+
+      } catch(err) {
+        console.log(err);
+        res.sendStatus(500);
+      }
+    });
+
 
 
 
@@ -411,6 +468,35 @@ exports.endpoint = function() {
 
 
   /**
+   * Get Fitbit user fats from Myrror -> Profile -> Data.
+   */
+  router.route('/fitbit/bmi_date')
+    .post(function (req, res) {
+      try {
+        var bmisNumber = req.body.bmisNumber;
+        var dateFrom = new Date(req.body.dateFrom).getTime();
+        var dateTo = new Date(req.body.dateTo).getTime();
+
+        // return the BMI between data range
+        var dbConnection = new CrowdPulse();
+        return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
+          return conn.PersonalData.find({ $and: [{nameBody:/BMI/},{ timestamp: { $gte: dateFrom, $lte: dateTo}} ]}).limit(bmisNumber).sort({timestamp: -1});
+        }).then(function (bmis) {
+          dbConnection.disconnect();
+          res.status(200);
+          res.json({auth: true, bmis: bmis});
+        });
+
+      } catch(err) {
+        console.log(err);
+        res.sendStatus(500);
+      }
+    });
+
+
+
+
+  /**
    * Get Fitbit user Food.
    */
   router.route('/fitbit/food')
@@ -443,6 +529,35 @@ exports.endpoint = function() {
         res.sendStatus(500);
       }
     });
+
+
+
+  /**
+   * Get Fitbit user Food from Myrror -> Profile -> Data.
+   */
+  router.route('/fitbit/food_date')
+    .post(function (req, res) {
+      try {
+        var foodNumber = req.body.foodNumber;
+        var dateFrom = new Date(req.body.dateFrom).getTime();
+        var dateTo = new Date(req.body.dateTo).getTime();
+
+        // return the food between data range
+        var dbConnection = new CrowdPulse();
+        return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
+          return conn.PersonalData.find({ $and: [{source: /fitbit-food/},{ timestamp: { $gte: dateFrom, $lte: dateTo}} ]}).limit(foodNumber).sort({timestamp: -1});
+        }).then(function (foods) {
+          dbConnection.disconnect();
+          res.status(200);
+          res.json({auth: true, foods: foods});
+        });
+
+      } catch(err) {
+        console.log(err);
+        res.sendStatus(500);
+      }
+    });
+
 
 
 
