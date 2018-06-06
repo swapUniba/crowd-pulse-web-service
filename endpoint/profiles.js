@@ -89,34 +89,22 @@ module.exports = function() {
             // Limit (req.query.l):
             let l = Number.MAX_SAFE_INTEGER;
 
-            if(req.query.l) {
+            if(req.query.l > 0) {
                 l = req.query.l;
             }
 
             // fromDate and toDate (req.query.from and req.query.to):
-            let temporalFilter = {
-                date: "",
-                timestamp: ""
-            };
+            let minDate = new Date(-8640000000000000);
+            minDate = new Date(minDate.getTime());
+
+            let maxDate = new Date(8640000000000000);
+            maxDate = new Date(maxDate.getTime());
 
             if(req.query.fromDate) {
-                temporalFilter.date = "$gte: ISODate(\"" + req.query.fromDate + "\")";
-                temporalFilter.timestamp = "$gte: " + Math.round(new Date(req.query.fromDate).getTime()/1000.0);
+                minDate = new Date(req.query.fromDate);
             }
             if(req.query.toDate) {
-                if (temporalFilter.date) {
-                    temporalFilter.date += ", $lte: ISODate(\"" + req.query.toDate + "\")";
-                }
-                else {
-                    temporalFilter.date += "$lte: ISODate(\"" + req.query.toDate + "\")";
-                }
-
-                if (temporalFilter.timestamp) {
-                    temporalFilter.timestamp += ", $lte: " + Math.round(new Date(req.query.toDate).getTime()/1000.0);
-                }
-                else {
-                    temporalFilter.timestamp += "$lte: " + Math.round(new Date(req.query.toDate).getTime()/1000.0);
-                }
+                maxDate = new Date(req.query.toDate);
             }
 
             // CollectionType (req.query.c):
@@ -135,18 +123,21 @@ module.exports = function() {
 
                     demographics: "Information not shared by the user", // From Profile.demographics collection
                     affects: "Information not shared by the user", // From Message (Sentiment + Emotion) collection
-                    behavior: "Information not shared by the user", // From Message (Text, Long, Lat and Date) collection
+                    behaviors: {
+                        fromText: "Information not shared by the user",
+                        fromActivity: "Information not shared by the user"
+                    }, // From Message for "fromText" collection and from PersonalData for "fromActivity"
                     cognitiveAspects: {
                         personalities: "Information not shared by the user",
                         empathies: "Information not shared by the user"
                     }, // From Profile.personalities and Profile.empathies collection
-                    interest: "Information not shared by the user", // From Interest collection
-                    physicalState: {
+                    interests: "Information not shared by the user", // From Interest collection
+                    physicalStates: {
                         heart: "Information not shared by the user",
                         sleep: "Information not shared by the user",
                         food: "Information not shared by the user",
                         body: "Information not shared by the user"
-                    }, // From PersonalData, heart-rate and sleep
+                    }, // From PersonalData, heart-rate, sleep, food and body
                     socialRelations: "Information not shared by the user" // From Connection collection
                 };
 
@@ -174,21 +165,81 @@ module.exports = function() {
                                         else myData.demographics = "Missing information";
                                     }
                                 }
-
-                                if(c === "all" || c === "CognitiveAspects") {
-                                    // GET USER COGNITIVE ASPECTS COLLECTION
-                                    if (holisticConfig.shareCognitiveAspects) {
-                                        if (user.personalities) {
-                                            myData.cognitiveAspects.personalities = user.personalities.slice(0, parseInt(l));
-                                            myData.cognitiveAspects.empathies = user.empathies.slice(0, parseInt(l));
-                                        }
-                                        else myData.cognitiveAspects = "Missing information";
-                                    }
-                                }
-
                                 dbConn.disconnect();
                             }
                         })
+                    })
+                    // GET USER PERSONALITIES FROM COGNITIVE ASPECTS COLLECTION
+                    .then(function () {
+                        if(c === "all" || c === "CognitiveAspects") {
+                            if (holisticConfig.shareCognitiveAspects) {
+                                return dbConn.connect(config.database.url, DB_PROFILES)
+                                    .then(function (connection) {
+                                        return connection.Profile.aggregate(
+                                            {$match: {username: myData.user}},
+                                            {$project: {
+                                                    _id: 0,
+                                                    personalities: {
+                                                        $filter: {
+                                                            input: "$personalities",
+                                                            as: "p",
+                                                            cond: { $and: [
+                                                                    { $gte: [ "$$p.timestamp", 1523268777924 ] },
+                                                                    { $lte: [ "$$p.timestamp", 1523968777924 ] }
+                                                                ] }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        ).exec((err, profile) => {
+                                            if (profile) {
+                                                myData.cognitiveAspects.personalities = profile[0]["personalities"];
+                                            }
+                                            else myData.cognitiveAspects.personalities = "Missing information";
+                                        });
+                                    })
+                                    .finally(function () {
+                                        dbConn.disconnect();
+                                    })
+                            }
+                        }
+                    })
+                    // GET USER EMPATHIES FROM COGNITIVE ASPECTS COLLECTION
+                    .then(function () {
+                        if(c === "all" || c === "CognitiveAspects") {
+                            if (holisticConfig.shareCognitiveAspects) {
+                                return dbConn.connect(config.database.url, DB_PROFILES)
+                                    .then(function (connection) {
+                                        return connection.Profile.aggregate(
+                                            {$match: {username: myData.user}},
+                                            {$project: {
+                                                    _id: 0,
+                                                    empathies: {
+                                                        $filter: {
+                                                            input: "$empathies",
+                                                            as: "e",
+                                                            cond: {
+                                                                $and: [
+                                                                    { $gte: [ "$$e.timestamp", minDate.getTime()/1000 ] },
+                                                                    { $lte: [ "$$e.timestamp", maxDate.getTime()/1000 ] }
+                                                                ]
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            ).exec((err, profile) => {
+                                            if (profile) {
+                                                myData.cognitiveAspects.empathies = profile[0]["empathies"];
+                                            }
+                                            else myData.cognitiveAspects.empathies = "Missing information";
+                                        });
+                                    })
+                                    .finally(function () {
+                                        dbConn.disconnect();
+                                    })
+                            }
+                        }
                     })
                     // GET USER AFFECTS COLLECTION
                     .then(function () {
@@ -196,7 +247,9 @@ module.exports = function() {
                             if (holisticConfig.shareAffects) {
                                 return dbConn.connect(config.database.url, myData.user)
                                     .then(function (connection) {
-                                        return connection.Message.find({}, {
+                                        return connection.Message.find({
+                                            date: {$gte: minDate, $lte: maxDate}
+                                        }, {
                                             _id: 0,
                                             date: 1,
                                             sentiment: 1,
@@ -214,14 +267,15 @@ module.exports = function() {
                             }
                         }
                     })
-                    // GET USER BEHAVIOR COLLECTION
-                    // TODO: AGGIUNGERE ACTIVITY DI FITBIT IN BEHAVIOR
+                    // GET USER BEHAVIOR FROM MESSAGE COLLECTION
                     .then(function () {
-                        if(c === "all" || c === "Behavior") {
+                        if(c === "all" || c === "Behaviors") {
                             if (holisticConfig.shareBehavior) {
                                 return dbConn.connect(config.database.url, myData.user)
                                     .then(function (connection) {
-                                        return connection.Message.find({}, {
+                                        return connection.Message.find({
+                                            date: {$gte: minDate, $lte: maxDate}
+                                        }, {
                                             _id: 0,
                                             text: 1,
                                             latitude: 1,
@@ -229,9 +283,46 @@ module.exports = function() {
                                             date: 1
                                         }, function (err, profile) {
                                             if (profile) {
-                                                myData.behavior = profile;
+                                                myData.behaviors.fromText = profile;
                                             }
-                                            else myData.behavior = "Missing information";
+                                            else myData.behaviors.fromText = "Missing information";
+                                        }).limit(parseInt(l));
+                                    })
+                                    .finally(function () {
+                                        dbConn.disconnect();
+                                    })
+                            }
+                        }
+                    })
+                    // GET USER BEHAVIOR FROM PERSONALDATA COLLECTION
+                    .then(function () {
+                        if(c === "all" || c === "Behaviors") {
+                            if (holisticConfig.shareBehavior) {
+                                return dbConn.connect(config.database.url, myData.user)
+                                    .then(function (connection) {
+                                        return connection.PersonalData.find({
+                                            source: /fitbit-activity/,
+                                            timestamp: {$gte: minDate.getTime()/1000, $lte: maxDate.getTime()/1000}
+                                        }, {
+                                            _id: 0,
+                                            timestamp: 1,
+                                            steps: 1,
+                                            distance: 1,
+                                            floors: 1,
+                                            elevation: 1,
+                                            minutesSedentary: 1,
+                                            minutesLightlyActive: 1,
+                                            minutesFairlyActive: 1,
+                                            minutesVeryActive: 1,
+                                            activityCalories: 1,
+                                            nameActivity: 1,
+                                            startTime: 1,
+                                            description: 1
+                                        }, function (err, profile) {
+                                            if (profile) {
+                                                myData.behaviors.fromActivity = profile;
+                                            }
+                                            else myData.behaviors.fromActivity = "Missing information";
                                         }).limit(parseInt(l));
                                     })
                                     .finally(function () {
@@ -242,20 +333,22 @@ module.exports = function() {
                     })
                     // GET USER INTERESTS COLLECTION
                     .then(function () {
-                        if(c === "all" || c === "Interest") {
+                        if(c === "all" || c === "Interests") {
                             if (holisticConfig.shareInterest) {
                                 return dbConn.connect(config.database.url, myData.user)
                                     .then(function (connection) {
-                                        return connection.Interest.find({}, {
+                                        return connection.Interest.find({
+                                            timestamp: {$gte: minDate.getTime()/1000, $lte: maxDate.getTime()/1000}
+                                        }, {
                                             _id: 0,
                                             value: 1,
                                             confidence: 1,
                                             timestamp: 1
                                         }, function (err, profile) {
                                             if (profile) {
-                                                myData.interest = profile;
+                                                myData.interests = profile;
                                             }
-                                            else myData.interest = "Missing information";
+                                            else myData.interests = "Missing information";
                                         }).limit(parseInt(l));
                                     })
                                     .finally(function () {
@@ -266,12 +359,15 @@ module.exports = function() {
                     })
                     // GET USER PHYSICAL STATE COLLECTION
                     .then(function () {
-                        if(c === "all" || c === "PhysicalState") {
+                        if(c === "all" || c === "PhysicalStates") {
                             if (holisticConfig.sharePhysicalState) {
                                 return dbConn.connect(config.database.url, myData.user)
                                     // TAKE HEART-RATE VALUES
                                     .then(function (connection) {
-                                        return connection.PersonalData.find({source: /fitbit-heart/}, {
+                                        return connection.PersonalData.find({
+                                            source: /fitbit-heart/,
+                                            timestamp: {$gte: minDate.getTime()/1000, $lte: maxDate.getTime()/1000}
+                                        }, {
                                             _id: 0,
                                             timestamp: 1,
                                             restingHeartRate: 1,
@@ -281,16 +377,19 @@ module.exports = function() {
                                             outOfRange_minutes: 1
                                         }, function (err, profile) {
                                             if (profile) {
-                                                myData.physicalState.heart = profile;
+                                                myData.physicalStates.heart = profile;
                                             }
-                                            else myData.physicalState.heart = "Missing information";
+                                            else myData.physicalStates.heart = "Missing information";
                                         }).limit(parseInt(l));
                                     })
                                     // TAKE SLEEP VALUES
                                     .then(function () {
                                         return dbConn.connect(config.database.url, myData.user)
                                             .then(function (connection) {
-                                                return connection.PersonalData.find({source: /fitbit-sleep/}, {
+                                                return connection.PersonalData.find({
+                                                    source: /fitbit-sleep/,
+                                                    timestamp: {$gte: minDate.getTime()/1000, $lte: maxDate.getTime()/1000}
+                                                }, {
                                                     _id: 0,
                                                     timestamp: 1,
                                                     duration: 1,
@@ -302,9 +401,9 @@ module.exports = function() {
                                                     timeInBed: 1,
                                                 }, function (err, profile) {
                                                     if (profile) {
-                                                        myData.physicalState.sleep = profile;
+                                                        myData.physicalStates.sleep = profile;
                                                     }
-                                                    else myData.physicalState.sleep = "Missing information";
+                                                    else myData.physicalStates.sleep = "Missing information";
                                                 }).limit(parseInt(l));
                                             })
                                     })
@@ -312,7 +411,10 @@ module.exports = function() {
                                     .then(function () {
                                         return dbConn.connect(config.database.url, myData.user)
                                             .then(function (connection) {
-                                                return connection.PersonalData.find({source: /fitbit-food/}, {
+                                                return connection.PersonalData.find({
+                                                    source: /fitbit-food/,
+                                                    timestamp: {$gte: minDate.getTime()/1000, $lte: maxDate.getTime()/1000}
+                                                }, {
                                                     _id: 0,
                                                     timestamp: 1,
                                                     caloriesIn: 1,
@@ -325,9 +427,9 @@ module.exports = function() {
                                                     water: 1,
                                                 }, function (err, profile) {
                                                     if (profile) {
-                                                        myData.physicalState.food = profile;
+                                                        myData.physicalStates.food = profile;
                                                     }
-                                                    else myData.physicalState.food = "Missing information";
+                                                    else myData.physicalStates.food = "Missing information";
                                                 }).limit(parseInt(l));
                                             })
                                     })
@@ -335,7 +437,10 @@ module.exports = function() {
                                     .then(function () {
                                         return dbConn.connect(config.database.url, myData.user)
                                             .then(function (connection) {
-                                                return connection.PersonalData.find({source: /fitbit-body/}, {
+                                                return connection.PersonalData.find({
+                                                    source: /fitbit-body/,
+                                                    timestamp: {$gte: minDate.getTime()/1000, $lte: maxDate.getTime()/1000}
+                                                }, {
                                                     _id: 0,
                                                     timestamp: 1,
                                                     bodyFat: 1,
@@ -344,9 +449,9 @@ module.exports = function() {
                                                     nameBody: 1
                                                 }, function (err, profile) {
                                                     if (profile) {
-                                                        myData.physicalState.body = profile;
+                                                        myData.physicalStates.body = profile;
                                                     }
-                                                    else myData.physicalState.body = "Missing information";
+                                                    else myData.physicalStates.body = "Missing information";
                                                 }).limit(parseInt(l));
                                             })
                                     })
