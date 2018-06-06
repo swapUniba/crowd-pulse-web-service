@@ -290,7 +290,7 @@ exports.endpoint = function() {
 
           }
           else if (numberActivities == 0){
-            // if the client do not specify a sleep number to read then update the user sleep
+            // if the client do not specify a activities number to read then update the user activity
             if (!activityNumber) {
               updateUserActivity(req.session.username).then(function () {
                 res.status(200);
@@ -418,7 +418,7 @@ exports.endpoint = function() {
       try {
         var foodNumber = req.body.foodNumber;
 
-        // if the client do not specify a sleep number to read then update the user sleep
+        // if the client do not specify a foods number to read then update the user food
         if (!foodNumber) {
 
           updateUserFood(req.session.username).then(function () {
@@ -523,6 +523,35 @@ exports.endpoint = function() {
     });
 
 
+
+  /**
+   * Get Fitbit user Heart from Myrror -> Profile -> Data.
+   */
+  router.route('/fitbit/heart_date')
+    .post(function (req, res) {
+      try {
+        var heartNumber = req.body.heartNumber;
+        var dateFrom = new Date(req.body.dateFrom).getTime();
+        var dateTo = new Date(req.body.dateTo).getTime();
+
+        // return the heart rate between data range
+        var dbConnection = new CrowdPulse();
+        return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
+          return conn.PersonalData.find({ $and: [{source: /fitbit-heart/},{ timestamp: { $gte: dateFrom, $lte: dateTo}} ]}).limit(heartNumber).sort({timestamp: -1});
+        }).then(function (hearts) {
+          dbConnection.disconnect();
+          res.status(200);
+          res.json({auth: true, hearts: hearts});
+        });
+
+      } catch(err) {
+        console.log(err);
+        res.sendStatus(500);
+      }
+    });
+
+
+
   /**
    * Get Fitbit user Sleep.
    */
@@ -566,6 +595,34 @@ exports.endpoint = function() {
         res.sendStatus(500);
       }
     });
+
+
+  /**
+   * Get Fitbit user Sleep from Myrror -> Profile -> Data.
+   */
+  router.route('/fitbit/sleep_date')
+    .post(function (req, res) {
+      try {
+        var sleepNumber = req.body.sleepNumber;
+        var dateFrom = new Date(req.body.dateFrom).getTime();
+        var dateTo = new Date(req.body.dateTo).getTime();
+
+          // return the sleep between data range
+          var dbConnection = new CrowdPulse();
+          return dbConnection.connect(config.database.url, req.session.username).then(function (conn) {
+            return conn.PersonalData.find({ $and: [{source: /fitbit-sleep/},{ timestamp: { $gte: dateFrom, $lte: dateTo}} ]}).limit(sleepNumber).sort({timestamp: -1});
+          }).then(function (sleeps) {
+            dbConnection.disconnect();
+            res.status(200);
+            res.json({auth: true, sleeps: sleeps});
+          });
+
+      } catch(err) {
+        console.log(err);
+        res.sendStatus(500);
+      }
+    });
+
 
 
 

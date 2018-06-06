@@ -210,6 +210,13 @@ PersonalDataSchema.statics.statActivityRawData = function (from, to) {
 
 };
 
+
+PersonalDataSchema.statics.statActivityRawDataFitbit = function (from, to) {
+  return Q(this.aggregate(buildActivityFilterQueryFitbit(from, to)).exec());
+
+};
+
+
 PersonalDataSchema.statics.statDisplayBar = function (from, to) {
   return Q(this.aggregate(buildStatDisplayBar(from, to)).exec())
     .then(function(dataArray) {
@@ -244,6 +251,8 @@ PersonalDataSchema.statics.statDisplayBar = function (from, to) {
       return Q(result);
     });
 };
+
+
 
 var buildActivityFilterQuery = function (from, to) {
   var filter = undefined;
@@ -281,6 +290,50 @@ var buildActivityFilterQuery = function (from, to) {
 
   return aggregations;
 };
+
+
+
+
+var buildActivityFilterQueryFitbit = function (from, to) {
+  var filter = undefined;
+
+  from = new Date(from);
+  to = new Date(to);
+  var hasFrom = !isNaN(from.getDate());
+  var hasTo = !isNaN(to.getDate());
+
+  if (hasFrom || hasTo) {
+    filter = {$match: {}};
+
+    if (hasFrom || hasTo) {
+      filter.$match['timestamp'] = {};
+      if (hasFrom) {
+        filter.$match['timestamp']['$gte'] = from.getTime();
+      }
+      if (hasTo) {
+        filter.$match['timestamp']['$lte'] = to.getTime();
+      }
+    }
+  }
+
+  var aggregations = [];
+
+  if (filter) {
+    aggregations.push(filter);
+  }
+
+  aggregations.push({
+    $match: {
+      source: "fitbit-activity"
+    }
+  });
+
+  return aggregations;
+};
+
+
+
+
 
 var buildStatPersonalDataSourceQuery = function () {
   var aggregations = [];
