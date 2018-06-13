@@ -105,6 +105,7 @@ exports.endpoint = function() {
         };
 
         request.post(params, function(err, response, oauthData){
+          console.log(oauthData);
         if (response.statusCode !== 200 || err) {
             res.sendStatus(500);
           } else {
@@ -118,7 +119,8 @@ exports.endpoint = function() {
 
                   profile.identities.configs.fitbitConfig = {
                     accessToken: oauthData.access_token,
-                    expiresIn: oauthData.expires_in
+                    expiresIn: oauthData.expires_in,
+                    refreshToken: oauthData.refresh_token
                   };
                   profile.save();
 
@@ -139,6 +141,87 @@ exports.endpoint = function() {
         res.sendStatus(500);
       }
     });
+
+
+  /**
+   * Refresh access token.
+   * Params:
+   *    code - the authorization code returned by Fitbit after user login
+   *    callbackUrl - the url send to Fitbit as callback
+   */
+  router.route('/fitbit/refresh_token')
+    .post(function (req, res) {
+      try {
+
+
+        /*
+         POST https://api.fitbit.com/oauth2/token
+         Authorization: Basic Y2xpZW50X2lkOmNsaWVudCBzZWNyZXQ=
+         Content-Type: application/x-www-form-urlencoded
+
+         grant_type=refresh_token&refresh_token=abcdef01234567890abcdef01234567890abcdef01234567890abcdef0123456
+        * */
+
+        var dbConnection = new CrowdPulse();
+        return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+          return conn.Profile.findOne({username: req.session.username}, function (err, profile) {
+
+            var params = {
+              url: API_ACCESS_TOKEN,
+              form: {
+                grant_type: 'refresh_token',
+                refresh_token :  profile.identities.configs.fitbitConfig.refreshToken,
+              },
+              headers: {
+                'Authorization': 'Basic ' + (new Buffer(CLIENT_ID + ':' + CLIENT_SECRET).toString('base64'))
+              },
+              json: true
+            };
+
+
+
+            request.post(params, function(err, response, refreshToken){
+
+              if (response.statusCode !== 200 || err) {
+                res.sendStatus(500);
+              } else {
+
+                // save access token in the database
+                    if (profile) {
+
+                      profile.identities.configs.fitbitConfig = {
+                        accessToken: refreshToken.access_token,
+                        expiresIn: refreshToken.expires_in
+                      };
+                      profile.save();
+
+                      res.status(200);
+                      res.json({auth: true});
+
+                    } else {
+                      return res.sendStatus(500);
+                    }
+              }
+            });
+
+
+
+          });
+        }).then(function () {
+          dbConnection.disconnect();
+        });
+
+
+
+
+      } catch(err) {
+        console.log(err);
+        res.sendStatus(500);
+      }
+    });
+
+
+
 
 
   /**

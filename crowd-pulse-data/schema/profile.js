@@ -78,6 +78,7 @@ var ProfileSchema = builder(schemas.profile, {
       fitbitConfig: {
         fitbitId: String,
         accessToken: String,
+        refreshToken: String,
         expiresIn: Number,
         shareProfile: Boolean,
         shareActivity: Boolean,
