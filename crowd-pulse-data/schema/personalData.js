@@ -218,7 +218,11 @@ PersonalDataSchema.statics.statActivityRawDataFitbit = function (from, to) {
 
 PersonalDataSchema.statics.statActivityTypeDataFitbit = function (from, to) {
   return Q(this.aggregate(buildActivityTypeFilterQueryFitbit(from, to)).exec());
+};
 
+
+PersonalDataSchema.statics.statActivityLineTypeDataFitbit = function (from, to) {
+  return Q(this.aggregate(buildActivityTypeFilterQueryFitbitLine(from, to)).exec());
 };
 
 
@@ -385,6 +389,43 @@ var buildActivityTypeFilterQueryFitbit = function (from, to) {
 };
 
 
+
+var buildActivityTypeFilterQueryFitbitLine = function (from, to) {
+  var filter = undefined;
+
+  from = new Date(from);
+  to = new Date(to);
+  var hasFrom = !isNaN(from.getDate());
+  var hasTo = !isNaN(to.getDate());
+
+  if (hasFrom || hasTo) {
+    filter = {$match: {}};
+
+    if (hasFrom || hasTo) {
+      filter.$match['timestamp'] = {};
+      if (hasFrom) {
+        filter.$match['timestamp']['$gte'] = from.getTime();
+      }
+      if (hasTo) {
+        filter.$match['timestamp']['$lte'] = to.getTime();
+      }
+    }
+  }
+
+  var aggregations = [];
+
+  if (filter) {
+    aggregations.push(filter);
+  }
+
+  aggregations.push({
+    $match: {
+      nameActivity: "steps"
+    }
+  });
+
+  return aggregations;
+};
 
 
 
