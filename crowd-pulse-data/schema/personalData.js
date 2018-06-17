@@ -216,6 +216,11 @@ PersonalDataSchema.statics.statActivityRawDataFitbit = function (from, to) {
 
 };
 
+PersonalDataSchema.statics.statActivityTypeDataFitbit = function (from, to) {
+  return Q(this.aggregate(buildActivityTypeFilterQueryFitbit(from, to)).exec());
+
+};
+
 
 PersonalDataSchema.statics.statDisplayBar = function (from, to) {
   return Q(this.aggregate(buildStatDisplayBar(from, to)).exec())
@@ -330,6 +335,55 @@ var buildActivityFilterQueryFitbit = function (from, to) {
 
   return aggregations;
 };
+
+
+
+var buildActivityTypeFilterQueryFitbit = function (from, to) {
+  var filter = undefined;
+
+  from = new Date(from);
+  to = new Date(to);
+  var hasFrom = !isNaN(from.getDate());
+  var hasTo = !isNaN(to.getDate());
+
+  if (hasFrom || hasTo) {
+    filter = {$match: {}};
+
+    if (hasFrom || hasTo) {
+      filter.$match['timestamp'] = {};
+      if (hasFrom) {
+        filter.$match['timestamp']['$gte'] = from.getTime();
+      }
+      if (hasTo) {
+        filter.$match['timestamp']['$lte'] = to.getTime();
+      }
+    }
+  }
+
+  var aggregations = [];
+
+  if (filter) {
+    aggregations.push(filter);
+  }
+
+  aggregations.push({
+    $group: {
+      _id: '$nameActivity',
+      value: {
+        $sum: 1
+      }
+    }
+  }, {
+    $project: {
+      _id: false,
+      name: '$_id',
+      value: true
+    }
+  });
+
+  return aggregations;
+};
+
 
 
 
