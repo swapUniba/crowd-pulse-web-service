@@ -21,6 +21,6 @@
     "crowdPulseRunTimeout": "30 0 * * *",
     "socialProfileTimeout": "0 0 * * *",
     "demographicsTimeout": "0 0 1 * *",
-    "interestsTimeout": "0 0 * * *"
+    "interestsTimeout": "/5 * * * *"
   }
 }
