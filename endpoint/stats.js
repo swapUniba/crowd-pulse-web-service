@@ -212,6 +212,66 @@ module.exports = function() {
     });
 
 
+  router.route('/stats/sleep_line_data/source')
+    .get(function(req, res) {
+      var dbConn = new CrowdPulse();
+      return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+        return conn.PersonalData.statSleepLineTypeDataFitbit(req.query.from, req.query.to);
+      })
+        .then(qSend(res))
+        .catch(qErr(res))
+        .finally(function() {
+          dbConn.disconnect();
+        });
+    });
+
+
+
+  router.route('/stats/heart_line_data/source')
+    .get(function(req, res) {
+      var dbConn = new CrowdPulse();
+      return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+        return conn.PersonalData.statHeartLineTypeDataFitbit(req.query.from, req.query.to);
+      })
+        .then(qSend(res))
+        .catch(qErr(res))
+        .finally(function() {
+          dbConn.disconnect();
+        });
+    });
+
+
+
+  router.route('/stats/body_data/source')
+    .get(function(req, res) {
+      var dbConn = new CrowdPulse();
+      return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+        return conn.PersonalData.statBodyTypeDataFitbit(req.query.from, req.query.to);
+      })
+        .then(qSend(res))
+        .catch(qErr(res))
+        .finally(function() {
+          dbConn.disconnect();
+        });
+    });
+
+
+  router.route('/stats/body_line_data/source')
+    .get(function(req, res) {
+      var dbConn = new CrowdPulse();
+      return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+        return conn.PersonalData.statBodyLineTypeDataFitbit(req.query.from, req.query.to);
+      })
+        .then(qSend(res))
+        .catch(qErr(res))
+        .finally(function() {
+          dbConn.disconnect();
+        });
+    });
+
+
+
+
 
   router.route('/stats/personal_data/gps')
     .get(function(req, res) {

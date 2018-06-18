@@ -226,6 +226,27 @@ PersonalDataSchema.statics.statActivityLineTypeDataFitbit = function (from, to) 
 };
 
 
+PersonalDataSchema.statics.statSleepLineTypeDataFitbit = function (from, to) {
+  return Q(this.aggregate(buildSleepTypeFilterQueryFitbitLine(from, to)).exec());
+};
+
+
+PersonalDataSchema.statics.statHeartLineTypeDataFitbit = function (from, to) {
+  return Q(this.aggregate(buildHeartTypeFilterQueryFitbitLine(from, to)).exec());
+};
+
+
+
+PersonalDataSchema.statics.statBodyTypeDataFitbit = function (from, to) {
+  return Q(this.aggregate(buildBodyTypeFilterQueryFitbit(from, to)).exec());
+};
+
+
+PersonalDataSchema.statics.statBodyLineTypeDataFitbit = function (from, to) {
+  return Q(this.aggregate(buildBodyTypeFilterQueryFitbitLine(from, to)).exec());
+};
+
+
 PersonalDataSchema.statics.statDisplayBar = function (from, to) {
   return Q(this.aggregate(buildStatDisplayBar(from, to)).exec())
     .then(function(dataArray) {
@@ -390,6 +411,54 @@ var buildActivityTypeFilterQueryFitbit = function (from, to) {
 
 
 
+var buildBodyTypeFilterQueryFitbit = function (from, to) {
+  var filter = undefined;
+
+  from = new Date(from);
+  to = new Date(to);
+  var hasFrom = !isNaN(from.getDate());
+  var hasTo = !isNaN(to.getDate());
+
+  if (hasFrom || hasTo) {
+    filter = {$match: {}};
+
+    if (hasFrom || hasTo) {
+      filter.$match['timestamp'] = {};
+      if (hasFrom) {
+        filter.$match['timestamp']['$gte'] = from.getTime();
+      }
+      if (hasTo) {
+        filter.$match['timestamp']['$lte'] = to.getTime();
+      }
+    }
+  }
+
+  var aggregations = [];
+
+  if (filter) {
+    aggregations.push(filter);
+  }
+
+  aggregations.push({
+    $group: {
+      _id: '$nameBody',
+      value: {
+        $sum: 1
+      }
+    }
+  }, {
+    $project: {
+      _id: false,
+      name: '$_id',
+      value: true
+    }
+  });
+
+  return aggregations;
+};
+
+
+
 var buildActivityTypeFilterQueryFitbitLine = function (from, to) {
   var filter = undefined;
 
@@ -421,6 +490,122 @@ var buildActivityTypeFilterQueryFitbitLine = function (from, to) {
   aggregations.push({
     $match: {
       nameActivity: "steps"
+    }
+  });
+
+  return aggregations;
+};
+
+
+
+var buildSleepTypeFilterQueryFitbitLine = function (from, to) {
+  var filter = undefined;
+
+  from = new Date(from);
+  to = new Date(to);
+  var hasFrom = !isNaN(from.getDate());
+  var hasTo = !isNaN(to.getDate());
+
+  if (hasFrom || hasTo) {
+    filter = {$match: {}};
+
+    if (hasFrom || hasTo) {
+      filter.$match['timestamp'] = {};
+      if (hasFrom) {
+        filter.$match['timestamp']['$gte'] = from.getTime();
+      }
+      if (hasTo) {
+        filter.$match['timestamp']['$lte'] = to.getTime();
+      }
+    }
+  }
+
+  var aggregations = [];
+
+  if (filter) {
+    aggregations.push(filter);
+  }
+
+  aggregations.push({
+    $match: {
+      source: "fitbit-sleep"
+    }
+  });
+
+  return aggregations;
+};
+
+
+var buildHeartTypeFilterQueryFitbitLine = function (from, to) {
+  var filter = undefined;
+
+  from = new Date(from);
+  to = new Date(to);
+  var hasFrom = !isNaN(from.getDate());
+  var hasTo = !isNaN(to.getDate());
+
+  if (hasFrom || hasTo) {
+    filter = {$match: {}};
+
+    if (hasFrom || hasTo) {
+      filter.$match['timestamp'] = {};
+      if (hasFrom) {
+        filter.$match['timestamp']['$gte'] = from.getTime();
+      }
+      if (hasTo) {
+        filter.$match['timestamp']['$lte'] = to.getTime();
+      }
+    }
+  }
+
+  var aggregations = [];
+
+  if (filter) {
+    aggregations.push(filter);
+  }
+
+  aggregations.push({
+    $match: {
+      source: "fitbit-heart"
+    }
+  });
+
+  return aggregations;
+};
+
+
+
+var buildBodyTypeFilterQueryFitbitLine = function (from, to) {
+  var filter = undefined;
+
+  from = new Date(from);
+  to = new Date(to);
+  var hasFrom = !isNaN(from.getDate());
+  var hasTo = !isNaN(to.getDate());
+
+  if (hasFrom || hasTo) {
+    filter = {$match: {}};
+
+    if (hasFrom || hasTo) {
+      filter.$match['timestamp'] = {};
+      if (hasFrom) {
+        filter.$match['timestamp']['$gte'] = from.getTime();
+      }
+      if (hasTo) {
+        filter.$match['timestamp']['$lte'] = to.getTime();
+      }
+    }
+  }
+
+  var aggregations = [];
+
+  if (filter) {
+    aggregations.push(filter);
+  }
+
+  aggregations.push({
+    $match: {
+      nameBody: "weight"
     }
   });
 
