@@ -45,7 +45,7 @@ var buildStatWordCloud = function(from, to, source, limitResults) {
   to = new Date(to);
   var hasFrom = !isNaN(from.getDate());
   var hasTo = !isNaN(to.getDate());
-  var hasSource = (typeof source != 'undefined' && source !== '');
+  var hasSource = (typeof source !== 'undefined' && source !== '');
 
   // group by query
   var groupBy = {
@@ -113,7 +113,7 @@ var buildStatWordCloud = function(from, to, source, limitResults) {
       weight: -1
     }
   }, {
-    $limit: 100
+    $limit: 1000
   });
 
   if (limitResults) {
