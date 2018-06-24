@@ -16,6 +16,7 @@ const DB_GLOBAL_DATA = databaseName.globalData;
 const CONSUMER_KEY = 'iigvOYorVOvnKScjm5t22ak5E';
 const CONSUMER_SECRET = '5j0tpR5lwdzjW18qgdCqYndiScAwoMtCWUD32GPfR0elTHnytI';
 
+
 const API_REQUEST_TOKEN = 'https://api.twitter.com/oauth/request_token';
 const API_ACCESS_TOKEN = 'https://api.twitter.com/oauth/access_token';
 const API_AUTHENTICATION = 'https://api.twitter.com/oauth/authenticate';

@@ -51,7 +51,7 @@ var buildStatWordCloud = function(from, to, source, limitResults) {
   var groupBy = {
     _id: "$value",
     timestamp: { $max: "$timestamp" },
-    weight: { $max: "$confidence" }
+    weight: { $sum: "$confidence" }
   };
 
   if (hasFrom || hasTo || hasSource) {
