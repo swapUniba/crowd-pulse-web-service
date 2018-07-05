@@ -226,8 +226,21 @@ PersonalDataSchema.statics.statActivityLineTypeDataFitbit = function (from, to) 
 };
 
 
+PersonalDataSchema.statics.statActivityLineTypeDataFitbitSteps = function (from, to) {
+  return Q(this.aggregate(buildActivityTypeFilterQueryFitbitLineSteps(from, to)).exec());
+};
+
+PersonalDataSchema.statics.statActivityLineTypeDataFitbitCalories = function (from, to) {
+  return Q(this.aggregate(buildActivityTypeFilterQueryFitbitLineCalories(from, to)).exec());
+};
+
+
 PersonalDataSchema.statics.statSleepLineTypeDataFitbit = function (from, to) {
   return Q(this.aggregate(buildSleepTypeFilterQueryFitbitLine(from, to)).exec());
+};
+
+PersonalDataSchema.statics.statSleepLineTypeDataFitbitEfficiency = function (from, to) {
+  return Q(this.aggregate(buildSleepTypeFilterQueryFitbitLineEfficiency(from, to)).exec());
 };
 
 
@@ -458,8 +471,48 @@ var buildBodyTypeFilterQueryFitbit = function (from, to) {
 };
 
 
-
 var buildActivityTypeFilterQueryFitbitLine = function (from, to) {
+  var filter = undefined;
+
+  from = new Date(from);
+  to = new Date(to);
+  var hasFrom = !isNaN(from.getDate());
+  var hasTo = !isNaN(to.getDate());
+
+  if (hasFrom || hasTo) {
+    filter = {$match: {}};
+
+    if (hasFrom || hasTo) {
+      filter.$match['timestamp'] = {};
+      if (hasFrom) {
+        filter.$match['timestamp']['$gte'] = from.getTime();
+      }
+      if (hasTo) {
+        filter.$match['timestamp']['$lte'] = to.getTime();
+      }
+    }
+  }
+
+  var aggregations = [];
+
+  if (filter) {
+    aggregations.push(filter);
+  }
+
+  aggregations.push({
+    $match: {
+      source: "fitbit-activity"
+    }
+  });
+
+  return aggregations;
+};
+
+
+
+
+
+var buildActivityTypeFilterQueryFitbitLineSteps = function (from, to) {
   var filter = undefined;
 
   from = new Date(from);
@@ -497,8 +550,83 @@ var buildActivityTypeFilterQueryFitbitLine = function (from, to) {
 };
 
 
+var buildActivityTypeFilterQueryFitbitLineCalories = function (from, to) {
+  var filter = undefined;
+
+  from = new Date(from);
+  to = new Date(to);
+  var hasFrom = !isNaN(from.getDate());
+  var hasTo = !isNaN(to.getDate());
+
+  if (hasFrom || hasTo) {
+    filter = {$match: {}};
+
+    if (hasFrom || hasTo) {
+      filter.$match['timestamp'] = {};
+      if (hasFrom) {
+        filter.$match['timestamp']['$gte'] = from.getTime();
+      }
+      if (hasTo) {
+        filter.$match['timestamp']['$lte'] = to.getTime();
+      }
+    }
+  }
+
+  var aggregations = [];
+
+  if (filter) {
+    aggregations.push(filter);
+  }
+
+  aggregations.push({
+    $match: {
+      nameActivity: "calories"
+    }
+  });
+
+  return aggregations;
+};
+
 
 var buildSleepTypeFilterQueryFitbitLine = function (from, to) {
+  var filter = undefined;
+
+  from = new Date(from);
+  to = new Date(to);
+  var hasFrom = !isNaN(from.getDate());
+  var hasTo = !isNaN(to.getDate());
+
+  if (hasFrom || hasTo) {
+    filter = {$match: {}};
+
+    if (hasFrom || hasTo) {
+      filter.$match['timestamp'] = {};
+      if (hasFrom) {
+        filter.$match['timestamp']['$gte'] = from.getTime();
+      }
+      if (hasTo) {
+        filter.$match['timestamp']['$lte'] = to.getTime();
+      }
+    }
+  }
+
+  var aggregations = [];
+
+  if (filter) {
+    aggregations.push(filter);
+  }
+
+  aggregations.push({
+    $match: {
+      source: "fitbit-sleep"
+    }
+  });
+
+  return aggregations;
+};
+
+
+var buildSleepTypeFilterQueryFitbitLineEfficiency = function (from, to) {
   var filter = undefined;
 
   from = new Date(from);
@@ -605,7 +733,7 @@ var buildBodyTypeFilterQueryFitbitLine = function (from, to) {
 
   aggregations.push({
     $match: {
-      nameBody: "weight"
+      source: "fitbit-body"
     }
   });
 

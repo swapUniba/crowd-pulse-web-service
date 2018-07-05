@@ -212,11 +212,52 @@ module.exports = function() {
     });
 
 
+  router.route('/stats/activity_line_data_steps/source')
+    .get(function(req, res) {
+      var dbConn = new CrowdPulse();
+      return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+        return conn.PersonalData.statActivityLineTypeDataFitbitSteps(req.query.from, req.query.to);
+      })
+        .then(qSend(res))
+        .catch(qErr(res))
+        .finally(function() {
+          dbConn.disconnect();
+        });
+    });
+
+  router.route('/stats/activity_line_data_calories/source')
+    .get(function(req, res) {
+      var dbConn = new CrowdPulse();
+      return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+        return conn.PersonalData.statActivityLineTypeDataFitbitCalories(req.query.from, req.query.to);
+      })
+        .then(qSend(res))
+        .catch(qErr(res))
+        .finally(function() {
+          dbConn.disconnect();
+        });
+    });
+
+
   router.route('/stats/sleep_line_data/source')
     .get(function(req, res) {
       var dbConn = new CrowdPulse();
       return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
         return conn.PersonalData.statSleepLineTypeDataFitbit(req.query.from, req.query.to);
+      })
+        .then(qSend(res))
+        .catch(qErr(res))
+        .finally(function() {
+          dbConn.disconnect();
+        });
+    });
+
+
+  router.route('/stats/sleep_line_data_efficiency/source')
+    .get(function(req, res) {
+      var dbConn = new CrowdPulse();
+      return dbConn.connect(config.database.url, req.query.db).then(function(conn) {
+        return conn.PersonalData.statSleepLineTypeDataFitbitEfficiency(req.query.from, req.query.to);
       })
         .then(qSend(res))
         .catch(qErr(res))

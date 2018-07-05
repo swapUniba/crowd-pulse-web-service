@@ -10,8 +10,8 @@ var FitbitProfileSchema = require('./../crowd-pulse-data/schema/fitbitProfile');
 var batch = require('./../lib/batchOperations');
 
 const DB_PROFILES = databaseName.profiles;
-const CLIENT_SECRET = '**********';
-const CLIENT_ID = '***********';
+const CLIENT_SECRET = '7bafb651e6be29b748dc20e52a6c68a0';
+const CLIENT_ID = '22CP24';
 const PERMISSIONS = 'activity heartrate location nutrition profile settings sleep social weight';
 
 const API_ACCESS_TOKEN = 'https://api.fitbit.com/oauth2/token';

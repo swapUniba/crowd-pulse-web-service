@@ -113,7 +113,7 @@ var buildStatWordCloud = function(from, to, source, limitResults) {
       weight: -1
     }
   }, {
-    $limit: 500
+    $limit: 200
   });
 
   if (limitResults) {
