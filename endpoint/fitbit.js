@@ -153,15 +153,6 @@ exports.endpoint = function() {
     .post(function (req, res) {
       try {
 
-
-        /*
-         POST https://api.fitbit.com/oauth2/token
-         Authorization: Basic Y2xpZW50X2lkOmNsaWVudCBzZWNyZXQ=
-         Content-Type: application/x-www-form-urlencoded
-
-         grant_type=refresh_token&refresh_token=abcdef01234567890abcdef01234567890abcdef01234567890abcdef0123456
-        * */
-
         var dbConnection = new CrowdPulse();
         return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
           return conn.Profile.findOne({username: req.session.username}, function (err, profile) {
@@ -171,6 +162,7 @@ exports.endpoint = function() {
               form: {
                 grant_type: 'refresh_token',
                 refresh_token :  profile.identities.configs.fitbitConfig.refreshToken,
+                expires_in : 31536000,
               },
               headers: {
                 'Authorization': 'Basic ' + (new Buffer(CLIENT_ID + ':' + CLIENT_SECRET).toString('base64'))
