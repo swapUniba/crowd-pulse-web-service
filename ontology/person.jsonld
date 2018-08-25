@@ -1,0 +1,168 @@
+{
+	"@context":
+	{
+		"foaf": "http://xmlns.com/foaf/0.1/",
+		"wi": "http://purl.org/ontology/wi/core#",
+		"wo": "http://purl.org/ontology/wo/core#",
+		"schema": "http://schema.org/",
+		"xsd": "http://www.w3.org/2001/XMLSchema#",
+		"dbo": "http://dbpedia.org/ontology/",
+		"gumo": "http://www.ubisworld.org/ubisworld/documents/gumo/2.0/GUMO+UbisWorld.owl#",
+		"myrror": "../ontology/myrror.jsonld#",
+		"Demographics":
+		{
+			"@id": "../ontology/myrror.jsonld#Demographics",
+			"@type": "@id"
+		},
+		"name": "foaf:name",
+		"location": "schema:homeLocation",
+		"image": "foaf:img",
+		"email": "foaf:mbox",
+		"gender": "schema:gender",
+		"language": "schema:knowsLanguage",
+		"work": "schema:workLocation",
+		"industry": "schema:worksFor",
+		"height": "schema:height",
+		"weight": "schema:weight",
+		"dateofBirth": "schema:birthDate",
+		"country": "schema:nationality",
+		"device": "dbo:device",
+		"website": "schema:homepage",
+		"bio": "dbo:description",
+		"Affects":
+		{
+			"@id": "../ontology/myrror.jsonld#Affects",
+			"@type": "@id"
+		},
+			"date": "schema:dateFeedElement",
+			"sentiment": "myrror:sentiment",
+			"emotion": "gumo:EmotionalState.700014",
+		"Behaviors":
+		{
+			"@id": "../ontology/myrror.jsonld#Behaviors",
+			"@type": "@id"
+		},
+		"fromText":
+		{
+			"@id": "../ontology/myrror.jsonld#fromText",
+			"@type": "@id"
+		},
+		"text": "schema:Text",
+		"latitude": "schema:latitude",
+		"longitude": "schema:longitude",
+		"date": "schema:dateFeedElement",
+		"fromActivity":
+		{
+			"@id": "../ontology/myrror.jsonld#fromActivity",
+			"@type": "@id"
+		},
+		"steps": "myrror:steps",
+		"distance": "myrror:distance",
+		"floors": "myrror:floors",
+		"elevation": "myrror:elevation",
+		"minutesSedentary": "myrror:minutesSedentary",
+		"minutesLightlyActive": "myrror:minutesLightlyActive",
+		"minutesFairlyActive": "myrror:minutesFairlyActive",
+		"minutesVeryActive": "myrror:minutesVeryActive",
+		"activityCalories": "myrror:activityCalories",
+		"nameActivity": "myrror:nameActivity",
+		"startTime": "myrror:startTime",
+		"description": "myrror:description",
+		"Cognitive_Aspects":
+		{
+            		"@id": "../ontology/myrror.jsonld#Cognitive_Aspects",
+			"@type": "@id"
+		},
+		"personalities":
+		{
+			"@id": "../ontology/myrror.jsonld#personalities",
+			"@type": "@id"
+		},
+		"openness": "gumo:Openness-Originality-OpenMindedness.800830",
+		"conscientiousness": "gumo:Conscientiousness-Control-Costraint.800826",
+		"extroversion": "gumo:Extraversion-Energy-Enthusiasm.800822",
+		"agreeableness": "gumo:Agreeableness-Altruism-Affection.800824",
+		"neuroticism": "gumo:Neuroticism-NegativeAffectivity-Nervousness.800828",
+		"confidence": "myrror:confidence",
+		"source": "dbo:source",
+		"empathies":
+		{
+			"@id": "../ontology/myrror.jsonld#empathies",
+			"@type": "@id"
+		},
+		"value": "dbo:value",
+		"confidence": "myrror:confidence",
+		"source": "dbo:source",
+		"Interests":
+		{
+			"@id": "../ontology/myrror.jsonld#Interests",
+			"@type": "@id"
+		},
+		"value":
+		{
+			"@id": "http://purl.org/ontology/wi/core#topic",
+			"@type": "@id"
+		},
+		"confidence": "wo:Weight",
+		"Physical States":
+		{
+			"@id": "../ontology/myrror.jsonld#Physical_States",
+			"@type": "@id"
+		},
+		"heart":
+		{
+			"@id": "../ontology/myrror.jsonld#heart",
+			"@type": "@id"
+		},
+		"restingHeartRate": "myrror:restingHeartRate",
+		"outOfRange_minutes": "myrror:outOfRange_minutes",
+		"fatBurn_minutes": "myrror:fatburn_minutes",
+		"cardio_minutes": "myrror:cardio_minutes",
+		"peak_minutes": "myrror:peak_minutes",
+		"sleep":
+		{
+			"@id": "../ontology/myrror.jsonld#sleep",
+			"@type": "@id"
+		},
+		"duration": "myrror:duration",
+		"efficiency": "myrror:efficiency",
+		"minutesAfterWakeup": "myrror:minutesAfterWakeup",
+		"minutesAsleep": "myrror:minutesAsleep",
+		"minutesAwake": "myrror:minutesAwake",
+		"minutesToFallAsleep": "myrror:minutesToFallAsleep",
+		"timeInBed": "myrror:timeInBed",
+		"food":
+		{
+			"@id": "../ontology/myrror.jsonld#food",
+			"@type": "@id"
+		},
+		"caloriesIn": "myrror:caloriesIn",
+		"calories": "myrror:calories",
+		"carbs": "myrror:carbs",
+		"fat": "myrror:fat",
+		"fiber": "myrror:fiber",
+		"protein": "myrror:protein",
+		"sodium": "myrror:sodium",
+		"water": "myrror:water",
+		"body":
+		{
+			"@id": "../ontology/myrror.jsonld#body",
+			"@type": "@id"
+		},
+		"bodyFat": "myrror:bodyFat",
+		"bodyWeight": "myrror:bodyWeight",
+		"bodyBmi": "myrror:bodtBmi",
+		"nameBody": "myrror:nameBody",
+		"Social Relations":
+		{
+			"@id": "../ontology/myrror.jsonld#Social_Relations",
+			"@type": "@id"
+		},
+		"contactid":
+		{
+			"@id": "foaf:nick",
+			"@type": "@id"
+		},
+		"source": "foaf:accountOnline"
+	}
+}

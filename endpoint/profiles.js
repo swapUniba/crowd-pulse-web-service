@@ -80,7 +80,6 @@ module.exports = function() {
      *    l - the limit of querying result
      *    fromDate, toDate - temporal filter in date format
      *    c - the specific collection
-     *
      *    mode - JSON or JSON-LD
      */
     router.route('/profile/:username')
@@ -90,14 +89,14 @@ module.exports = function() {
             let l = Number.MAX_SAFE_INTEGER;
 
             if(req.query.l > 0) {
-                l = req.query.l;
+                l = parseInt(req.query.l);
             }
 
             // fromDate and toDate (req.query.from and req.query.to):
-            let minDate = new Date(-8640000000000000);
+            let minDate = new Date(-4320000000000000);
             minDate = new Date(minDate.getTime());
 
-            let maxDate = new Date(8640000000000000);
+            let maxDate = new Date(4320000000000000);
             maxDate = new Date(maxDate.getTime());
 
             if(req.query.fromDate) {
@@ -119,6 +118,7 @@ module.exports = function() {
 
                 // JSON pattern
                 let myData = {
+                    "@context": "",
                     user: req.params.username,
 
                     demographics: "Information not shared by the user", // From Profile.demographics collection
@@ -140,6 +140,18 @@ module.exports = function() {
                     }, // From PersonalData, heart-rate, sleep, food and body
                     socialRelations: "Information not shared by the user" // From Connection collection
                 };
+
+                if (req.params.mode) {
+                    let mode = req.params.mode;
+                }
+
+                if (mode == "jsonld") {
+                    myData["@context"] = "../ontology/person.jsonld";
+
+                    // Change content-type for JSON-LD
+                    Request.type("application/ld+json");
+                }
+
 
                 // Save holistic configuration from user's profile
                 let holisticConfig = null;
@@ -190,7 +202,7 @@ module.exports = function() {
                                                                         { $lte: [ "$$p.timestamp", maxDate.getTime()/1000 ] }
                                                                     ]}
                                                             }
-                                                        }, parseInt(l)]
+                                                        }, l]
                                                     }
                                                 }
                                             }
@@ -228,7 +240,7 @@ module.exports = function() {
                                                                         { $lte: [ "$$e.timestamp", maxDate.getTime()/1000 ] }
                                                                     ]}
                                                             }
-                                                        }, parseInt(l)]
+                                                        }, l]
                                                     }
                                                 }
                                             }
