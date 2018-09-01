@@ -105,7 +105,7 @@ exports.endpoint = function() {
         };
 
         request.post(params, function(err, response, oauthData){
-          console.log(oauthData);
+
         if (response.statusCode !== 200 || err) {
             res.sendStatus(500);
           } else {
@@ -162,7 +162,7 @@ exports.endpoint = function() {
               form: {
                 grant_type: 'refresh_token',
                 refresh_token :  profile.identities.configs.fitbitConfig.refreshToken,
-                expires_in : 31536000,
+                expires_in : 28800
               },
               headers: {
                 'Authorization': 'Basic ' + (new Buffer(CLIENT_ID + ':' + CLIENT_SECRET).toString('base64'))
@@ -183,8 +183,10 @@ exports.endpoint = function() {
 
                       profile.identities.configs.fitbitConfig = {
                         accessToken: refreshToken.access_token,
+                        refreshToken: refreshToken.refresh_token,
                         expiresIn: refreshToken.expires_in
                       };
+
                       profile.save();
 
                       res.status(200);
@@ -973,7 +975,7 @@ var updateDailyActivity = function(username, callback) {
     return conn.Profile.findOne({username: username}, function (err, profile) {
       if (profile) {
         dbConnection.disconnect();
-//todo
+
         var fitbitConfig = profile.identities.configs.fitbitConfig;
         //setting data
         var dataodierna = new Date();
@@ -2031,7 +2033,6 @@ var updateDailyFriends = function(username, callback) {
           if (response.statusCode !== 200) {
             return err;
           }
-
           if (firstRequest) {
             // share default value
             fitbitConfig.shareFriends = true;
@@ -2331,6 +2332,7 @@ var updateDailySleep = function(username, callback) {
               // share default value
               fitbitConfig.shareSleep = true;
             }
+
             var i = 0;
             var sleepToSave = [];
             while (i < userSleep.sleep.length) {
@@ -2665,6 +2667,57 @@ var deleteFood = function(username, databaseName) {
 };
 
 
+var updateToken = function(username, callback) {
+
+  var dbConnection = new CrowdPulse();
+  return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
+    return conn.Profile.findOne({username: username}, function (err, profile) {
+
+      var params = {
+        url: API_ACCESS_TOKEN,
+        form: {
+          grant_type: 'refresh_token',
+          refresh_token :  profile.identities.configs.fitbitConfig.refreshToken,
+          expires_in : 28800
+        },
+        headers: {
+          'Authorization': 'Basic ' + (new Buffer(CLIENT_ID + ':' + CLIENT_SECRET).toString('base64'))
+        },
+        json: true
+      };
+
+      request.post(params, function(err, response, refreshToken){
+
+        if (response.statusCode !== 200 || err) {
+
+          console.log('Error refresh token');
+
+        } else {
+
+          // save access token in the database
+          if (profile) {
+
+            profile.identities.configs.fitbitConfig = {
+              accessToken: refreshToken.access_token,
+              refreshToken: refreshToken.refresh_token,
+              expiresIn: refreshToken.expires_in
+            };
+
+            profile.save();
+
+          } else {
+            console.log('Error save token');
+          }
+        }
+      });
+    });
+  }).then(function () {
+    dbConnection.disconnect();
+  });
+  };
+
+
+
 exports.updateUserProfile = updateUserProfile;
 exports.updateUserActivity = updateUserActivity;
 exports.updateUserBodyWeight = updateUserBodyWeight;
@@ -2682,3 +2735,4 @@ exports.updateDailyFood = updateDailyFood;
 exports.updateDailyWeight = updateDailyWeight;
 exports.updateDailyFat = updateDailyFat;
 exports.updateDailyBmi = updateDailyBmi;
+exports.updateToken = updateToken;
