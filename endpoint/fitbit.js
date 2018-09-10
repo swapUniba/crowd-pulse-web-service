@@ -1003,30 +1003,24 @@ var updateDailyActivity = function(username, callback) {
             if (response.statusCode !== 200) {
               return err;
             }
+            var activityToSave = [];
 
-            var i = 0;
-            var activityCaloriesToSave = [];
-            while (i < userActivity.activities.length) {
-              if(userActivity.activities.length > 0)
+              if(userActivity.summary)
               {
-                activityCaloriesToSave.push({
+                activityToSave.push({
                   deviceId: 'fitbit',
                   username: username,
-                  timestamp: dataodierna.toISOString().substring(0,10),
-                  activityCalories: userActivity.activities[i].calories,
-                  description: userActivity.activities[i].description,
-                  distance: userActivity.activities[i].distance,
-                  nameActivity: userActivity.activities[i].name,
-                  activitySteps: userActivity.activities[i].steps,
+                  timestamp: new Date().getTime(),
+                  activityCalories: userActivity.summary.activityCalories,
+                  distance: userActivity.summary.distances[1].distance,
+                  steps: userActivity.summary.steps,
+                  nameActivity: 'steps',
                   source: 'fitbit-activity',
                   share: true
                 });
               }
-              i++;
-            }
-
-            storeActivity(activityCaloriesToSave,username).then(function () {
-              storeActivity(activityCaloriesToSave,databaseName.globalData);
+            storeActivity(activityToSave,username).then(function () {
+              storeActivity(activityToSave,databaseName.globalData);
               });
             });
         }
@@ -2521,7 +2515,6 @@ var storeFood = function(foods, databaseName) {
  * @param databaseName
  */
 var storeActivity = function(activities, databaseName) {
-
   var dbConnection = new CrowdPulse();
   var activitySaved = 0;
   return dbConnection.connect(config.database.url, databaseName).then(function (conn) {
