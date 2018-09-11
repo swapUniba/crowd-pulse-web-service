@@ -896,6 +896,7 @@ var updateUserProfile = function(username, callback) {
         // true if it is the first time user requests fitbit profile
         var firstRequest = !profile.identities.configs.fitbitConfig.fitbitId;
 
+        console.log('FITBIT: Daily profile extraction:'+  new Date().toDateString());
         // retrieve profile information about the current user
         request.get(params, function(err, response, userData)
         {
@@ -994,9 +995,10 @@ var updateDailyActivity = function(username, callback) {
 
           if (firstRequest) {
             // share default value
-            fitbitConfig.shareSleep = true;
+            fitbitConfig.shareActivity = true;
           }
 
+          console.log('FITBIT: Daily activity extraction:'+  new Date().toDateString());
 
           // retrieve profile information about the calories
           request.get(params, function (err, response, userActivity) {
@@ -1493,6 +1495,7 @@ var updateDailyWeight = function(username, callback) {
           var firstRequest = !profile.identities.configs.fitbitConfig.fitbitId;
           var share = fitbitConfig.shareBodyWeight;
 
+          console.log('FITBIT: Daily weight extraction:'+  new Date().toDateString());
 
           // retrieve weight information about the current user
           request.get(params, function (err, response, userWeight) {
@@ -1627,6 +1630,7 @@ var updateDailyFat = function(username, callback) {
           var firstRequest = !profile.identities.configs.fitbitConfig.fitbitId;
           var share = fitbitConfig.shareBody_Fat;
 
+          console.log('FITBIT: Daily fat extraction:'+  new Date().toDateString());
 
           // retrieve fat information about the current user
           request.get(params, function (err, response, userFat) {
@@ -1762,6 +1766,7 @@ var updateDailyBmi = function(username, callback) {
           var firstRequest = !profile.identities.configs.fitbitConfig.fitbitId;
           var share = fitbitConfig.shareBody_Bmi;
 
+          console.log('FITBIT: Daily BMI extraction:'+  new Date().toDateString());
 
           // retrieve fat information about the current user
           request.get(params, function (err, response, userBmi) {
@@ -1895,6 +1900,8 @@ var updateDailyFood = function(username, callback) {
           var firstRequest = !profile.identities.configs.fitbitConfig.fitbitId;
           var share = fitbitConfig.shareFood;
 
+          console.log('FITBIT: Daily food extraction:'+  new Date().toDateString());
+
           // retrieve profile information about the current user
           request.get(params, function (err, response, userFood) {
             if (response.statusCode !== 200) {
@@ -2020,6 +2027,7 @@ var updateDailyFriends = function(username, callback) {
         var firstRequest = !profile.identities.configs.fitbitConfig.fitbitId;
         var share = fitbitConfig.shareFriends;
 
+        console.log('FITBIT: Daily friends extraction:'+  new Date().toDateString());
 
         // retrieve profile information about the current user
         request.get(params, function (err, response, userFriends) {
@@ -2160,6 +2168,7 @@ var updateDailyHeartRate = function(username, callback) {
           var firstRequest = !profile.identities.configs.fitbitConfig.fitbitId;
           var share = fitbitConfig.shareHeartRate;
 
+          console.log('FITBIT: Daily heart extraction:'+  new Date().toDateString());
 
           // retrieve profile information about the current user
           request.get(params, function (err, response, userHeart) {
@@ -2315,6 +2324,7 @@ var updateDailySleep = function(username, callback) {
           var firstRequest = !profile.identities.configs.fitbitConfig.fitbitId;
           var share = fitbitConfig.shareSleep;
 
+          console.log('FITBIT: Daily sleep extraction:'+  new Date().toDateString());
 
           // retrieve profile information about the current user
           request.get(params, function (err, response, userSleep) {
@@ -2681,6 +2691,9 @@ var updateToken = function(username, callback) {
 
       request.post(params, function(err, response, refreshToken){
 
+        console.log('Old access token: ' + username);
+        console.log(profile.identities.configs.fitbitConfig.accessToken);
+
         if (response.statusCode !== 200 || err) {
 
           console.log('Error refresh token');
@@ -2697,6 +2710,17 @@ var updateToken = function(username, callback) {
             };
 
             profile.save();
+            console.log('New access token: ' + username + new Date().toDateString());
+            console.log(profile.identities.configs.fitbitConfig.accessToken);
+            setTimeout(function(){updateUserProfile(username, null)}, 3000);
+            setTimeout(function(){updateDailyFriends(username, null)}, 3000);
+            setTimeout(function(){updateDailyFood(username, null)}, 3000);
+            setTimeout(function(){updateDailySleep(username, null)}, 3000);
+            setTimeout(function(){updateDailyActivity(username, null)}, 3000);
+            setTimeout(function(){updateDailyHeartRate(username, null)}, 3000);
+            setTimeout(function(){updateDailyWeight(username, null)}, 3000);
+            setTimeout(function(){updateDailyFat(username, null)}, 3000);
+            setTimeout(function(){updateDailyBmi(username, null)}, 3000);
 
           } else {
             console.log('Error save token');
