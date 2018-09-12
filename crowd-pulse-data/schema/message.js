@@ -538,7 +538,7 @@ var buildStatEmotionTimelineQuery = function(type, terms, from, to, sentiment, l
 
   aggregations.push({
     $match: {
-      emotion: {$exists: true, $ne: null, $ne: undefined}
+      emotion: {$exists: true, $ne: null, $ne: undefined, $ne: "none"}
     }
   }, {
     $project: {
