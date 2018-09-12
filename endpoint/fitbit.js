@@ -969,7 +969,7 @@ var updateUserProfile = function(username, callback) {
  * @param username
  * @param callback
  */
-var updateDailyActivity = function(username, callback) {
+var updateDailyActivity = function(username, callback, accessToken) {
 
   var dbConnection = new CrowdPulse();
   return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
@@ -984,7 +984,7 @@ var updateDailyActivity = function(username, callback) {
         var params =
           {
             url: API_USER_DAILY_ACTIVITY + dataodierna.toISOString().substring(0,10)+'.json',
-            headers: {'Authorization': 'Bearer ' + fitbitConfig.accessToken},
+            headers: {'Authorization': 'Bearer ' + accessToken},
             json: true
           };
         if (fitbitConfig.accessToken) {
@@ -1474,7 +1474,7 @@ var updateUserBodyWeight = function(username, callback) {
  * @param username
  * @param callback
  */
-var updateDailyWeight = function(username, callback) {
+var updateDailyWeight = function(username, callback, accessToken) {
 
   var dbConnection = new CrowdPulse();
   return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
@@ -1486,7 +1486,7 @@ var updateDailyWeight = function(username, callback) {
         var params =
           {
             url: API_USER_DAILY_BODY_AND_WEIGHT_DATA,
-            headers: {'Authorization': 'Bearer ' + fitbitConfig.accessToken},
+            headers: {'Authorization': 'Bearer ' + accessToken},
             json: true
           };
 
@@ -1609,7 +1609,7 @@ var updateUserBodyFat = function(username, callback) {
  * @param username
  * @param callback
  */
-var updateDailyFat = function(username, callback) {
+var updateDailyFat = function(username, callback, accessToken) {
 
   var dbConnection = new CrowdPulse();
   return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
@@ -1621,7 +1621,7 @@ var updateDailyFat = function(username, callback) {
         var params =
           {
             url: API_USER_DAILY_BODY_AND_FAT_DATA,
-            headers: {'Authorization': 'Bearer ' + fitbitConfig.accessToken},
+            headers: {'Authorization': 'Bearer ' + accessToken},
             json: true
           };
 
@@ -1745,7 +1745,7 @@ var updateUserBodyBmi = function(username, callback) {
  * @param username
  * @param callback
  */
-var updateDailyBmi = function(username, callback) {
+var updateDailyBmi = function(username, callback, accessToken) {
 
   var dbConnection = new CrowdPulse();
   return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
@@ -1757,7 +1757,7 @@ var updateDailyBmi = function(username, callback) {
         var params =
           {
             url: API_USER_DAILY_BODY_AND_BMI_DATA,
-            headers: {'Authorization': 'Bearer ' + fitbitConfig.accessToken},
+            headers: {'Authorization': 'Bearer ' + accessToken},
             json: true
           };
 
@@ -1879,7 +1879,7 @@ var updateUserFood = function(username, callback) {
  * @param username
  * @param callback
  */
-var updateDailyFood = function(username, callback) {
+var updateDailyFood = function(username, callback, accessToken) {
   var dbConnection = new CrowdPulse();
   return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
     return conn.Profile.findOne({username: username}, function (err, profile) {
@@ -1891,7 +1891,7 @@ var updateDailyFood = function(username, callback) {
         var params =
           {
             url: API_USER_DAILY_FOOD_DATA,
-            headers: {'Authorization': 'Bearer ' + fitbitConfig.accessToken},
+            headers: {'Authorization': 'Bearer ' + accessToken},
             json: true
           };
 
@@ -2008,7 +2008,7 @@ var updateUserFriends = function(username, callback) {
  * @param username
  * @param callback
  */
-var updateDailyFriends = function(username, callback) {
+var updateDailyFriends = function(username, callback, accessToken) {
 
   var dbConnection = new CrowdPulse();
   return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
@@ -2018,7 +2018,7 @@ var updateDailyFriends = function(username, callback) {
       var params =
         {
           url: API_USER_FRIENDS_DATA,
-          headers: { 'Authorization': 'Bearer ' + fitbitConfig.accessToken },
+          headers: { 'Authorization': 'Bearer ' + accessToken },
           json: true
         };
 
@@ -2146,7 +2146,7 @@ var updateUserHeartRate = function(username, callback) {
  * @param username
  * @param callback
  */
-var updateDailyHeartRate = function(username, callback) {
+var updateDailyHeartRate = function(username, callback, accessToken) {
 
   var dbConnection = new CrowdPulse();
   return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
@@ -2159,7 +2159,7 @@ var updateDailyHeartRate = function(username, callback) {
         var params =
           {
             url: API_USER_DAILY_HEARTRATE_DATA,
-            headers: {'Authorization': 'Bearer ' + fitbitConfig.accessToken},
+            headers: {'Authorization': 'Bearer ' + accessToken},
             json: true
           };
 
@@ -2300,7 +2300,7 @@ var updateUserSleep = function(username, callback) {
  * @param username
  * @param callback
  */
-var updateDailySleep = function(username, callback) {
+var updateDailySleep = function(username, callback, accessToken) {
 
   var dbConnection = new CrowdPulse();
   return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
@@ -2315,7 +2315,7 @@ var updateDailySleep = function(username, callback) {
         var params =
           {
             url: API_USER_SLEEP_DATA + dataodierna.toISOString().substring(0,10)+'.json',
-            headers: {'Authorization': 'Bearer ' + fitbitConfig.accessToken},
+            headers: {'Authorization': 'Bearer ' + accessToken},
             json: true
           };
 
@@ -2712,15 +2712,15 @@ var updateToken = function(username, callback) {
             profile.save();
             console.log('New access token: ' + username + new Date().toDateString());
             console.log(profile.identities.configs.fitbitConfig.accessToken);
-            setTimeout(function(){updateUserProfile(username, null)}, 3000);
-            setTimeout(function(){updateDailyFriends(username, null)}, 3000);
-            setTimeout(function(){updateDailyFood(username, null)}, 3000);
-            setTimeout(function(){updateDailySleep(username, null)}, 3000);
-            setTimeout(function(){updateDailyActivity(username, null)}, 3000);
-            setTimeout(function(){updateDailyHeartRate(username, null)}, 3000);
-            setTimeout(function(){updateDailyWeight(username, null)}, 3000);
-            setTimeout(function(){updateDailyFat(username, null)}, 3000);
-            setTimeout(function(){updateDailyBmi(username, null)}, 3000);
+            setTimeout(function(){updateUserProfile(username, null, refreshToken.access_token)}, 9000);
+            setTimeout(function(){updateDailyFriends(username, null,refreshToken.access_token)}, 9000);
+            setTimeout(function(){updateDailyFood(username, null, refreshToken.access_token)}, 9000);
+            setTimeout(function(){updateDailySleep(username, null, refreshToken.access_token)}, 9000);
+            setTimeout(function(){updateDailyActivity(username, null, refreshToken.access_token)}, 9000);
+            setTimeout(function(){updateDailyHeartRate(username, null, refreshToken.access_token)}, 9000);
+            setTimeout(function(){updateDailyWeight(username, null, refreshToken.access_token)}, 9000);
+            setTimeout(function(){updateDailyFat(username, null, refreshToken.access_token)}, 9000);
+            setTimeout(function(){updateDailyBmi(username, null, refreshToken.access_token)}, 9000);
 
           } else {
             console.log('Error save token');
