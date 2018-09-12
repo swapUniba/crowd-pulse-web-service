@@ -2712,7 +2712,7 @@ var updateToken = function(username, callback) {
             profile.save();
             console.log('New access token: ' + username + new Date().toDateString());
             console.log(profile.identities.configs.fitbitConfig.accessToken);
-            setTimeout(function(){updateUserProfile(username, null, refreshToken.access_token)}, 9000);
+            setTimeout(function(){updateUserProfile(username, null)}, 9000);
             setTimeout(function(){updateDailyFriends(username, null,refreshToken.access_token)}, 9000);
             setTimeout(function(){updateDailyFood(username, null, refreshToken.access_token)}, 9000);
             setTimeout(function(){updateDailySleep(username, null, refreshToken.access_token)}, 9000);
