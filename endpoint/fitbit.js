@@ -2670,11 +2670,11 @@ var deleteFood = function(username, databaseName) {
 };
 
 
-var updateToken = function(username, callback) {
+var updateToken = function(user, callback) {
 
   var dbConnection = new CrowdPulse();
   return dbConnection.connect(config.database.url, DB_PROFILES).then(function (conn) {
-    return conn.Profile.findOne({username: username}, function (err, profile) {
+    return conn.Profile.findOne({username: user}, function (err, profile) {
 
       var params = {
         url: API_ACCESS_TOKEN,
@@ -2691,12 +2691,12 @@ var updateToken = function(username, callback) {
 
       request.post(params, function(err, response, refreshToken){
 
-        console.log('Old access token: ' + username);
+        console.log('Old access token: ' + user);
         console.log(profile.identities.configs.fitbitConfig.accessToken);
 
         if (response.statusCode !== 200 || err) {
 
-          console.log('Error refresh token');
+          console.log('Error refresh token 1');
 
         } else {
 
@@ -2710,26 +2710,26 @@ var updateToken = function(username, callback) {
             };
 
             profile.save();
-            console.log('New access token: ' + username + new Date().toDateString());
+            console.log('New access token: ' + user + new Date().toDateString());
             console.log(profile.identities.configs.fitbitConfig.accessToken);
-            setTimeout(function(){updateUserProfile(username, null)}, 9000);
-            setTimeout(function(){updateDailyFriends(username, null,refreshToken.access_token)}, 9000);
-            setTimeout(function(){updateDailyFood(username, null, refreshToken.access_token)}, 9000);
-            setTimeout(function(){updateDailySleep(username, null, refreshToken.access_token)}, 9000);
-            setTimeout(function(){updateDailyActivity(username, null, refreshToken.access_token)}, 9000);
-            setTimeout(function(){updateDailyHeartRate(username, null, refreshToken.access_token)}, 9000);
-            setTimeout(function(){updateDailyWeight(username, null, refreshToken.access_token)}, 9000);
-            setTimeout(function(){updateDailyFat(username, null, refreshToken.access_token)}, 9000);
-            setTimeout(function(){updateDailyBmi(username, null, refreshToken.access_token)}, 9000);
+            setTimeout(function(){updateUserProfile(user, null)}, 9000);
+            setTimeout(function(){updateDailyFriends(user, null,refreshToken.access_token)}, 9000);
+            setTimeout(function(){updateDailyFood(user, null, refreshToken.access_token)}, 9000);
+            setTimeout(function(){updateDailySleep(user, null, refreshToken.access_token)}, 9000);
+            setTimeout(function(){updateDailyActivity(user, null, refreshToken.access_token)}, 9000);
+            setTimeout(function(){updateDailyHeartRate(user, null, refreshToken.access_token)}, 9000);
+            setTimeout(function(){updateDailyWeight(user, null, refreshToken.access_token)}, 9000);
+            setTimeout(function(){updateDailyFat(user, null, refreshToken.access_token)}, 9000);
+            setTimeout(function(){updateDailyBmi(user, null, refreshToken.access_token)}, 9000);
 
           } else {
-            console.log('Error save token');
+            console.log('Error save token 2');
           }
         }
       });
     });
   }).then(function () {
-    dbConnection.disconnect();
+    setTimeout(function(){dbConnection.disconnect()}, 30000);
   });
   };
 
