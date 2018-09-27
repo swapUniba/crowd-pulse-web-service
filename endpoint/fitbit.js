@@ -1005,25 +1005,119 @@ var updateDailyActivity = function(username, callback, accessToken) {
             if (response.statusCode !== 200) {
               return err;
             }
-            var activityToSave = [];
-
+            var activityStepsToSave = [], activityCaloriesToSave = [], activityDistanceToSave = [],
+              activityFairlyToSave = [], activityLightlyToSave = [], activitySedentaryToSave = [], activityVeryToSave = [];
+              const time = new Date().getTime();
               if(userActivity.summary)
               {
-                activityToSave.push({
+                  activityStepsToSave.push({
+                    deviceId: 'fitbit',
+                    username: username,
+                    timestamp: time,
+                    steps: userActivity.summary.steps,
+                    nameActivity: 'steps',
+                    source: 'fitbit-activity',
+                    share: true
+                  });
+                }
+
+
+                storeActivity(activityStepsToSave,username).then(function () {
+                  storeActivity(activityStepsToSave,databaseName.globalData);
+                });
+
+
+                  activityCaloriesToSave.push({
+                    deviceId: 'fitbit',
+                    username: username,
+                    timestamp: time,
+                    activityCalories: userActivity.summary.activityCalories,
+                    nameActivity: 'calories',
+                    source: 'fitbit-activity',
+                    share: true
+                  });
+
+                storeActivity(activityCaloriesToSave,username).then(function () {
+                  storeActivity(activityCaloriesToSave,databaseName.globalData);
+                });
+
+
+                  activityDistanceToSave.push({
+                    deviceId: 'fitbit',
+                    username: username,
+                    timestamp: time,
+                    distance: userActivity.summary.distances[1].distance,
+                    nameActivity: 'distance',
+                    source: 'fitbit-activity',
+                    share: true
+                  });
+
+                storeActivity(activityDistanceToSave,username).then(function () {
+                  storeActivity(activityDistanceToSave,databaseName.globalData);
+                });
+
+
+
+                    activityFairlyToSave.push({
+                      deviceId: 'fitbit',
+                      username: username,
+                      timestamp: time,
+                      minutesFairlyActive: userActivity.summary.fairlyActiveMinutes,
+                      nameActivity: 'fairly',
+                      source: 'fitbit-activity',
+                      share: true
+                    });
+
+                storeActivity(activityFairlyToSave,username).then(function () {
+                  storeActivity(activityFairlyToSave,databaseName.globalData);
+                });
+
+
+                  activityLightlyToSave.push({
+                    deviceId: 'fitbit',
+                    username: username,
+                    timestamp: time,
+                    minutesLightlyActive: userActivity.summary.lightlyActiveMinutes,
+                    nameActivity: 'minutesLightlyActive',
+                    source: 'fitbit-activity',
+                    share: true
+                  });
+
+                storeActivity(activityLightlyToSave,username).then(function () {
+                  storeActivity(activityLightlyToSave,databaseName.globalData);
+                });
+
+
+                activitySedentaryToSave.push({
                   deviceId: 'fitbit',
                   username: username,
-                  timestamp: new Date().getTime(),
-                  activityCalories: userActivity.summary.activityCalories,
-                  distance: userActivity.summary.distances[1].distance,
-                  steps: userActivity.summary.steps,
-                  nameActivity: 'steps',
+                  timestamp: time,
+                  minutesSedentary: userActivity.summary.sedentaryMinutes,
+                  nameActivity: 'minutesSedentary',
                   source: 'fitbit-activity',
                   share: true
                 });
-              }
-            storeActivity(activityToSave,username).then(function () {
-              storeActivity(activityToSave,databaseName.globalData);
-              });
+
+                storeActivity(activitySedentaryToSave,username).then(function () {
+                  storeActivity(activitySedentaryToSave,databaseName.globalData);
+                });
+
+
+                  activityVeryToSave.push({
+                    deviceId: 'fitbit',
+                    username: username,
+                    timestamp: time,
+                    minutesVeryActive: userActivity.summary.veryActiveMinutes,
+                    nameActivity: 'veryActive',
+                    source: 'fitbit-activity',
+                    share: true
+                  });
+
+                storeActivity(activityVeryToSave,username).then(function () {
+                  storeActivity(activityVeryToSave,databaseName.globalData);
+                });
+
+
             });
         }
       }
