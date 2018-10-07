@@ -17,7 +17,7 @@
   "androidAppBlackList": ["com.android.launcher3", "com.swapuniba.crowdpulse", "com.google.android.packageinstaller",
     "com.android.settings", "com.google.android.setupwizard", "com.android.systemui"],
   "batch": {
-    "cleaningPersonalDataTimeout": "*/10 * * * *",
+    "cleaningPersonalDataTimeout": "*/180 * * * *",
     "crowdPulseRunTimeout": "30 0 * * *",
     "socialProfileTimeout": "0 21 * * *",
     "demographicsTimeout": "0 0 1 * *",
