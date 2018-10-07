@@ -85,6 +85,9 @@ module.exports = function() {
     router.route('/profile/:username')
         .get(function (req, res) {
             // FILTER:
+            // Mode
+            let mode;
+
             // Limit (req.query.l):
             let l = Number.MAX_SAFE_INTEGER;
 
@@ -141,15 +144,15 @@ module.exports = function() {
                     socialRelations: "Information not shared by the user" // From Connection collection
                 };
 
-                if (req.params.mode) {
-                    let mode = req.params.mode;
+                if (req.query.mode) {
+                    mode = req.query.mode;
                 }
 
-                if (mode == "jsonld") {
+                if (mode === "jsonld") {
                     myData["@context"] = "../ontology/person.jsonld";
 
                     // Change content-type for JSON-LD
-                    Request.type("application/ld+json");
+                    res.contentType('application/ld+json');
                 }
 
 
