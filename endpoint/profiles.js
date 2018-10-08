@@ -109,11 +109,11 @@ module.exports = function() {
                 maxDate = new Date(req.query.toDate);
             }
 
-            // CollectionType (req.query.c):
-            let c = "all";
+            // Facet (req.query.c):
+            let f = "all";
 
-            if(req.query.c) {
-                c = req.query.c;
+            if(req.query.f) {
+                f = req.query.f;
             }
 
             if (req.params.username) {
@@ -149,7 +149,7 @@ module.exports = function() {
                 }
 
                 if (mode === "jsonld") {
-                    myData["@context"] = "../ontology/person.jsonld";
+                    myData["@context"] = __dirname + "/ontology/person.jsonld";
 
                     // Change content-type for JSON-LD
                     res.contentType('application/ld+json');
@@ -171,7 +171,7 @@ module.exports = function() {
                                 // Get username
                                 myData.user = req.params.username;
 
-                                if(c === "all" || c === "Demographics") {
+                                if(f === "all" || f === "Demographics") {
                                     // GET USER DEMOGRAPHICS COLLECTION
                                     if (holisticConfig.shareDemographics) {
                                         if (user.demographics) {
@@ -186,7 +186,7 @@ module.exports = function() {
                     })
                     // GET USER PERSONALITIES FROM COGNITIVE ASPECTS COLLECTION
                     .then(function () {
-                        if(c === "all" || c === "CognitiveAspects") {
+                        if(f === "all" || f === "CognitiveAspects") {
                             if (holisticConfig.shareCognitiveAspects) {
                                 return dbConn.connect(config.database.url, DB_PROFILES)
                                     .then(function (connection) {
@@ -224,7 +224,7 @@ module.exports = function() {
                     })
                     // GET USER EMPATHIES FROM COGNITIVE ASPECTS COLLECTION
                     .then(function () {
-                        if(c === "all" || c === "CognitiveAspects") {
+                        if(f === "all" || f === "CognitiveAspects") {
                             if (holisticConfig.shareCognitiveAspects) {
                                 return dbConn.connect(config.database.url, DB_PROFILES)
                                     .then(function (connection) {
@@ -262,7 +262,7 @@ module.exports = function() {
                     })
                     // GET USER AFFECTS COLLECTION
                     .then(function () {
-                        if(c === "all" || c === "Affects") {
+                        if(f === "all" || f === "Affects") {
                             if (holisticConfig.shareAffects) {
                                 return dbConn.connect(config.database.url, myData.user)
                                     .then(function (connection) {
@@ -288,7 +288,7 @@ module.exports = function() {
                     })
                     // GET USER BEHAVIOR FROM MESSAGE COLLECTION
                     .then(function () {
-                        if(c === "all" || c === "Behaviors") {
+                        if(f === "all" || f === "Behaviors") {
                             if (holisticConfig.shareBehavior) {
                                 return dbConn.connect(config.database.url, myData.user)
                                     .then(function (connection) {
@@ -315,7 +315,7 @@ module.exports = function() {
                     })
                     // GET USER BEHAVIOR FROM PERSONALDATA COLLECTION
                     .then(function () {
-                        if(c === "all" || c === "Behaviors") {
+                        if(f === "all" || f === "Behaviors") {
                             if (holisticConfig.shareBehavior) {
                                 return dbConn.connect(config.database.url, myData.user)
                                     .then(function (connection) {
@@ -352,7 +352,7 @@ module.exports = function() {
                     })
                     // GET USER INTERESTS COLLECTION
                     .then(function () {
-                        if(c === "all" || c === "Interests") {
+                        if(f === "all" || f === "Interests") {
                             if (holisticConfig.shareInterest) {
                                 return dbConn.connect(config.database.url, myData.user)
                                     .then(function (connection) {
@@ -378,7 +378,7 @@ module.exports = function() {
                     })
                     // GET USER PHYSICAL STATE COLLECTION
                     .then(function () {
-                        if(c === "all" || c === "PhysicalStates") {
+                        if(f === "all" || f === "PhysicalStates") {
                             if (holisticConfig.sharePhysicalState) {
                                 return dbConn.connect(config.database.url, myData.user)
                                     // TAKE HEART-RATE VALUES
@@ -482,7 +482,7 @@ module.exports = function() {
                     })
                     // GET USER SOCIAL RELATIONS COLLECTION
                     .then(function () {
-                        if(c === "all" || c === "SocialRelations") {
+                        if(f === "all" || f === "SocialRelations") {
                             if (holisticConfig.shareSocialRelations) {
                                 return dbConn.connect(config.database.url, myData.user)
                                     .then(function (connection) {
