@@ -33,7 +33,50 @@ var PersonalDataSchema = builder(schemas.personalData, {
   still: Number,
   tilting: Number,
   walking: Number,
-  unknown: Number
+  unknown: Number,
+  //Sleep
+  duration: Number,
+  efficiency: Number,
+  minutesAfterWakeup: Number,
+  minutesAsleep: Number,
+  minutesAwake: Number,
+  minutesToFallAsleep: Number,
+  timeInBed: Number,
+  //HeartRate
+	restingHeartRate: Number,
+  peak_minutes: Number,
+  cardio_minutes: Number,
+  fatBurn_minutes: Number,
+  outOfRange_minutes: Number,
+  //Food
+  caloriesIn: Number,
+  calories: Number,
+  carbs: Number,
+  fat: Number,
+  fiber: Number,
+  protein: Number,
+  sodium: Number,
+  water: Number,
+  //activity
+  steps: Number,
+  distance: Number,
+  floors: Number,
+  elevation: Number,
+  minutesSedentary: Number,
+  minutesLightlyActive: Number,
+  minutesFairlyActive: Number,
+  minutesVeryActive: Number,
+  activityCalories: Number,
+  nameActivity: String,
+  startTime: String,
+  description: String,
+  //Body
+  bodyFat: Number,
+  bodyWeight: Number,
+  bodyBmi: Number,
+  nameBody: String
+
+
 });
 
 

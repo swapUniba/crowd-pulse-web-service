@@ -6,6 +6,7 @@ var mongoose = require('mongoose');
 var builder = require('./schemaBuilder');
 var TwitterProfileSchema = require('./../schema/twitterProfile');
 var FacebookProfileSchema = require('./../schema/facebookProfile');
+var FitbitProfileSchema = require('./../schema/fitbitProfile');
 var LinkedInProfileSchema = require('./../schema/linkedinProfile');
 var InstagramProfileSchema = require('./../schema/instagramProfile');
 var DemographicsSchema = require('./demographic');
@@ -34,6 +35,7 @@ var ProfileSchema = builder(schemas.profile, {
   identities: {
     twitter: TwitterProfileSchema,
     facebook: FacebookProfileSchema,
+    fitbit: FitbitProfileSchema,
     linkedIn: LinkedInProfileSchema,
     instagram: InstagramProfileSchema,
     devices: [
@@ -72,6 +74,22 @@ var ProfileSchema = builder(schemas.profile, {
         shareMessages: Boolean,
         shareFriends: Boolean,
         shareLikes: Boolean
+      },
+      fitbitConfig: {
+        fitbitId: String,
+        accessToken: String,
+        expiresIn: Number,
+        shareProfile: Boolean,
+        shareActivity: Boolean,
+        shareBodyWeight: Boolean,
+        shareBody_Fat: Boolean,
+        shareBody_Bmi: Boolean,
+        shareDevices: Boolean,
+        shareFood: Boolean,
+        shareFriends: Boolean,
+        shareHeartRate: Boolean,
+        shareSleep: Boolean
+
       },
       twitterConfig: {
         twitterId: String,
