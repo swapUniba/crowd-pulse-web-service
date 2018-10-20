@@ -89,7 +89,7 @@ module.exports = function() {
             let mode;
 
             // Limit (req.query.l):
-            let l = 50000000;
+            let l = Number.MAX_SAFE_INTEGER/4;
 
             if(req.query.l > 0) {
                 l = parseInt(req.query.l);
