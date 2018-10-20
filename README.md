@@ -7,14 +7,18 @@ Crowd Pulse RESTful Web Service.
 
 ## Requirements
 
-Install NodeJS with the following commands:
+Install NodeJS with the following commands ([official guide](https://nodejs.org/en/download/package-manager/#debian-and-ubuntu-based-linux-distributions)):
 
 ```
-sudo apt-get update -y
-sudo apt-get install -y build-essential
-curl -sL https://deb.nodesource.com/setup_4.x | sudo -E bash -
+curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
 sudo apt-get install -y nodejs
-sudo apt-get install libkrb5-dev
+```
+
+## Installation
+To install the dependencies, run the following command in the project root:
+
+```
+sudo npm install
 ```
 
 ## Configuration
@@ -29,51 +33,39 @@ You can configure the Web service by creating a `config.json` just as the follow
     "db": "admin"
   },
   "crowd-pulse": {
-    "main": "/path/to/crowd-pulse/core"
+    "main": "/your/crowd-pulse/installation",
+    "projects": ["crowdpulse-projectname-1", "crowdpulse-projectname-2"]
   },
   "logs": {
-    "path": "/path/to/crowd-pulse/logs/ws"
+    "path": "/your/logs/path"
+  },
+  "session": {
+    "secret": "your-secret"
+  },
+  "androidAppBlackList": ["com.android.launcher3", "com.swapuniba.crowdpulse", "com.google.android.packageinstaller",
+    "com.android.settings", "com.google.android.setupwizard", "com.android.systemui"],
+  "batch": {
+    "cleaningPersonalDataTimeout": "*/10 * * * *",
+    "crowdPulseRunTimeout": "30 0 * * *",
+    "socialProfileTimeout": "0 0 * * *",
+    "demographicsTimeout": "0 0 1 * *",
+    "interestsTimeout": "0 0 * * *"
   }
 }
 ```
-
-Alternatively, you can replace the same information with the following environment variables:
-
-* `CROWD_PULSE_WS_PORT` instead of `port`
-* `CROWD_PULSE_WS_MONGO_URL` instead of `database.url`
-* `CROWD_PULSE_WS_MONGO_DB` instead of `database.db`
-* `CROWD_PULSE_MAIN_EXE` instead of `crowd-pulse.main`
-* `CROWD_PULSE_LOGS_PATH` instead of `logs.path`
-
 
 ## Run
 
 To execute the application, run `sudo node ./bin/crowd-pulse-web-service.js`.
 
+**Recommended**: use [forever](https://www.npmjs.com/package/forever) in project `./bin` folder:
 
-## OAuth 2.0
-
-**The OAuth 2.0 implementation is still in progress.**
-
-Call with a `GET` the following **authorization** endpoint:
-
+Start:
 ```
-GET http://oauth-service:3000/oauth/authorize?
-    response_type=code&
-    client_id=theclientid123&
-    redirect_uri=http://yourapp.com&
-    scope=some,scopes
+sudo forever start -l ./forever.log -a -o ./out.log -e ./err.log crowd-pulse-web-service.js
 ```
 
-If the process is correct, the user will be redirected to the `redirect_uri`, that will hold the generated
-authorization code for the user.
-
-Then, make a `GET` request to the following **token** endpoint:
-
+Stop:
 ```
-GET http://oauth-service:3000/oauth/token?
-    response_type=code&
-    client_id=theclientid123&
-    redirect_uri=http://yourapp.com&
-    scope=some,scopes
+sudo forever stop crowd-pulse-web-service.js
 ```
