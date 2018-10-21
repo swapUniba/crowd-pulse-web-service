@@ -17,23 +17,18 @@
     "cors": "^2.7.1",
     "ejs": "^2.3.3",
     "express": "^4.10.4",
-    "express-rate-limit": "^2.11.0",
     "express-session": "^1.11.3",
-    "jsonwebtoken": "^8.1.0",
-    "kerberos": "0.0.17",
-    "lodash": "^3.10.1",
     "mkdirp": "^0.5.1",
-    "mongoose": "^4.2.8",
     "morgan": "^1.6.1",
-    "node-schedule": "^1.2.5",
     "oauth2-server": "^2.4.1",
     "q": "^1.4.1",
     "q-io": "^1.13.1",
-    "querystring": "^0.2.0",
-    "request": "^2.83.0",
     "rx": "^4.0.0",
     "rx-node": "^1.0.1",
     "sanitize-filename": "^1.4.4",
-    "socket.io": "^1.3.7"
+    "socket.io": "^1.3.7",
+    "kerberos": "0.0.17",
+    "lodash": "^3.10.1",
+    "mongoose": "^4.2.8"
   }
 }

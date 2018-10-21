@@ -4,13 +4,11 @@ var Q = require('q');
 var mongoose = require('mongoose');
 var builder = require('./schemaBuilder');
 var schemas = require('./schemaName');
-var databaseName = require('./../databaseName');
 
 var MessageSchema = builder(schemas.message, {
   id: mongoose.Schema.ObjectId,
   oId: String,
   text: String,
-  story: String,
   source: String,
   fromUser: String,
   toUsers: [String],
@@ -23,22 +21,12 @@ var MessageSchema = builder(schemas.message, {
   longitude: Number,
   favs: Number,
   shares: Number,
-  share: Boolean,
   tags: [schemas.tag],
   tokens: [schemas.token],
   sentiment: Number,
   number_cluster: Number,
-  cluster_kmeans: Number,
-  emotion: String,
-  images: [String],
-  likes: Number,
-  comments: Number,
-  location: String
+  cluster_kmeans: Number
 });
-
-MessageSchema.statics.newFromObject = function(object) {
-  return new this(object);
-};
 
 var buildSearchQuery = function(type, search) {
   var queryOn;
@@ -373,14 +361,6 @@ var buildStatMapQuery = function(type, terms, from, to, sentiment, language, lat
     aggregations.push(filter);
   }
 
-  if (type === databaseName.globalData) {
-    aggregations.push({
-      $match: {
-        share: true
-      }
-    });
-  }
-
   aggregations.push({
     $match: {
       latitude: {$exists: true}
@@ -390,13 +370,10 @@ var buildStatMapQuery = function(type, terms, from, to, sentiment, language, lat
       _id: false,
       latitude:  true,
       longitude: true,
-      text: true,
-      images: true,
-      date: true,
-      fromUser: true
+      text: true
     }
   });
- // console.log(aggregations);
+ console.log(aggregations);
   return aggregations;
 };
 
@@ -465,15 +442,6 @@ var buildStatSentimentTimelineQuery = function(type, terms, from, to, sentiment,
     aggregations.push(filter);
   }
 
-  // getting global data, filter message share value
-  if (type === databaseName.globalData) {
-    aggregations.push({
-      $match: {
-        share: {$eq: true}
-      }
-    })
-  }
-
   aggregations.push({
     $project: {
       _id: false,
@@ -510,72 +478,6 @@ var buildStatSentimentTimelineQuery = function(type, terms, from, to, sentiment,
     $project: {
       _id: false,
       name: sentimentProjection,
-      values: true
-    }
-  });
-
-  return aggregations;
-};
-
-var buildStatEmotionTimelineQuery = function(type, terms, from, to, sentiment, language, lat, lng, ray) {
-  // create the filter
-  var filter = buildFilter(type, terms, from, to, sentiment, language, lat, lng, ray);
-
-  var aggregations = [];
-
-  if (filter) {
-    aggregations.push(filter);
-  }
-
-  // getting global data, filter message share value
-  if (type === databaseName.globalData) {
-    aggregations.push({
-      $match: {
-        share: {$eq: true}
-      }
-    })
-  }
-
-  aggregations.push({
-    $match: {
-      emotion: {$exists: true, $ne: null, $ne: undefined}
-    }
-  }, {
-    $project: {
-      _id: false,
-      date: {$dateToString: {format: "%Y-%m-%dT00:00:00Z", date: "$date"}},
-      emotion: true
-    }
-  }, {
-    $group: {
-      _id: {emotion: '$emotion', date: '$date'},
-      value: {
-        $sum: 1
-      }
-    }
-  }, {
-    $project: {
-      _id: false,
-      emotion: '$_id.emotion',
-      date: '$_id.date',
-      value: '$value'
-    }
-  }, {
-    $sort: {'date': 1}
-  }, {
-    $group: {
-      _id: '$emotion',
-      values: {
-        $push: {
-          date: '$date',
-          value: '$value'
-        }
-      }
-    }
-  }, {
-    $project: {
-      _id: false,
-      name: '$_id',
       values: true
     }
   });
@@ -658,10 +560,6 @@ MessageSchema.statics.statClusterMessages = function(type, terms, from, to,senti
 
 MessageSchema.statics.statSentimentMessages = function(type, terms, from, to,sentiment, language, lat, lng, ray, sen) {
   return Q(this.find(buildStatSentimentMessagesQuery(type, terms, from, to, sentiment, language, lat, lng, ray, sen)).exec());
-};
-
-MessageSchema.statics.statEmotionTimeline = function(type, terms, from, to,sentiment, language, lat, lng, ray, sen) {
-  return Q(this.aggregate(buildStatEmotionTimelineQuery(type, terms, from, to, sentiment, language, lat, lng, ray, sen)).exec());
 };
 
 MessageSchema.statics.statSentimentTimeline = function(type, terms, from, to, sentiment, language, lat, lng, ray) {

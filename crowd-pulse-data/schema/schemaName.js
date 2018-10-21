@@ -13,7 +13,5 @@ module.exports = {
   token: 'Token',
   user: 'User',
   personalData: 'PersonalData',
-  connection: 'Connection',
-  like: 'Like',
-  interest: 'Interest'
+  connection: 'Connection'
 };
