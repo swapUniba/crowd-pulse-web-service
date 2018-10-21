@@ -5,22 +5,33 @@
     "db": "admin"
   },
   "crowd-pulse": {
-    "main": "/opt/crowd-pulse/build/install/crowd-pulse/bin/crowd-pulse",
-    "projects": ["complete-pipeline", "app-categorize", "personality-detector", "empathy-detector"]
+    "main": "/opt/crowd-pulse/build/install/crowd-pulse/bin/crowd-pulse"
   },
   "logs": {
     "path": "/opt/crowd-pulse/logs"
   },
   "session": {
-    "secret": "secret-test-to-change-to-more-security"
+    "secret": "jbdfnsduytraw78rh89xb40tqoeuhaoqwx8q7p3dbry4c9q478crybp9a8xy489rv6q92",
+    "resave": true,
+    "saveUninitialized": false
   },
-  "androidAppBlackList": ["com.android.launcher3", "com.swapuniba.crowdpulse", "com.google.android.packageinstaller",
-    "com.android.settings", "com.google.android.setupwizard", "com.android.systemui"],
-  "batch": {
-    "cleaningPersonalDataTimeout": "*/10 * * * *",
-    "crowdPulseRunTimeout": "30 0 * * *",
-    "socialProfileTimeout": "0 0 * * *",
-    "demographicsTimeout": "0 0 1 * *",
-    "interestsTimeout": "0 0 * * *"
-  }
+  "users": [
+    {
+      "username": "frapontillo",
+      "email": "francescopontillo@gmail.com",
+      "secret": "holoyolo"
+    }
+  ],
+  "apps": [
+    {
+      "name": "crowd-pulse-admin",
+      "secret": "yolo123",
+      "allowedGrants": [
+        "authorization_code",
+        "password",
+        "refresh_token",
+        "client_credentials"
+      ]
+    }
+  ]
 }
