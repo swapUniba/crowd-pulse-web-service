@@ -89,7 +89,7 @@ module.exports = function() {
             let mode;
 
             // Limit (req.query.l):
-            let l = Number.MAX_SAFE_INTEGER/4;
+            let l = Number.MAX_SAFE_INTEGER;
 
             if(req.query.l > 0) {
                 l = parseInt(req.query.l);
@@ -124,24 +124,24 @@ module.exports = function() {
                     "@context": "",
                     user: req.params.username,
 
-                    demographics: {}, // From Profile.demographics collection
-                    affects: {}, // From Message (Sentiment + Emotion) collection
+                    demographics: "Information not shared by the user", // From Profile.demographics collection
+                    affects: "Information not shared by the user", // From Message (Sentiment + Emotion) collection
                     behaviors: {
-                        fromText: {},
-                        fromActivity: {}
+                        fromText: "Information not shared by the user",
+                        fromActivity: "Information not shared by the user"
                     }, // From Message for "fromText" collection and from PersonalData for "fromActivity"
                     cognitiveAspects: {
-                        personalities: {},
-                        empathies: {}
+                        personalities: "Information not shared by the user",
+                        empathies: "Information not shared by the user"
                     }, // From Profile.personalities and Profile.empathies collection
-                    interests: {}, // From Interest collection
+                    interests: "Information not shared by the user", // From Interest collection
                     physicalStates: {
-                        heart: {},
-                        sleep: {},
-                        food: {},
-                        body: {}
+                        heart: "Information not shared by the user",
+                        sleep: "Information not shared by the user",
+                        food: "Information not shared by the user",
+                        body: "Information not shared by the user"
                     }, // From PersonalData, heart-rate, sleep, food and body
-                    socialRelations: {} // From Connection collection
+                    socialRelations: "Information not shared by the user" // From Connection collection
                 };
 
                 if (req.query.mode) {
@@ -177,6 +177,7 @@ module.exports = function() {
                                         if (user.demographics) {
                                             myData.demographics = user.demographics;
                                         }
+                                        else myData.demographics = "Missing information";
                                     }
                                 }
                                 dbConn.disconnect();
@@ -204,7 +205,7 @@ module.exports = function() {
                                                                         { $lte: [ "$$p.timestamp", maxDate.getTime()/1000 ] }
                                                                     ]}
                                                             }
-                                                        }, l/2]
+                                                        }, l]
                                                     }
                                                 }
                                             }
@@ -212,6 +213,7 @@ module.exports = function() {
                                             if (profile) {
                                                 myData.cognitiveAspects.personalities = profile[0]["personalities"];
                                             }
+                                            else myData.cognitiveAspects.personalities = "Missing information";
                                         });
                                     })
                                     .finally(function () {
@@ -241,7 +243,7 @@ module.exports = function() {
                                                                         { $lte: [ "$$e.timestamp", maxDate.getTime()/1000 ] }
                                                                     ]}
                                                             }
-                                                        }, l/2]
+                                                        }, l]
                                                     }
                                                 }
                                             }
@@ -249,6 +251,7 @@ module.exports = function() {
                                             if (profile) {
                                                 myData.cognitiveAspects.empathies = profile[0]["empathies"];
                                             }
+                                            else myData.cognitiveAspects.empathies = "Missing information";
                                         });
                                     })
                                     .finally(function () {
@@ -274,6 +277,7 @@ module.exports = function() {
                                             if (profile) {
                                                 myData.affects = profile;
                                             }
+                                            else myData.affects = "Missing information";
                                         }).limit(parseInt(l));
                                     })
                                     .finally(function () {
@@ -300,6 +304,7 @@ module.exports = function() {
                                             if (profile) {
                                                 myData.behaviors.fromText = profile;
                                             }
+                                            else myData.behaviors.fromText = "Missing information";
                                         }).limit(parseInt(l));
                                     })
                                     .finally(function () {
@@ -336,6 +341,7 @@ module.exports = function() {
                                             if (profile) {
                                                 myData.behaviors.fromActivity = profile;
                                             }
+                                            else myData.behaviors.fromActivity = "Missing information";
                                         }).limit(parseInt(l));
                                     })
                                     .finally(function () {
@@ -361,6 +367,7 @@ module.exports = function() {
                                             if (profile) {
                                                 myData.interests = profile;
                                             }
+                                            else myData.interests = "Missing information";
                                         }).limit(parseInt(l));
                                     })
                                     .finally(function () {
@@ -415,6 +422,7 @@ module.exports = function() {
                                                     if (profile) {
                                                         myData.physicalStates.sleep = profile;
                                                     }
+                                                    else myData.physicalStates.sleep = "Missing information";
                                                 }).limit(parseInt(l));
                                             })
                                     })
@@ -440,6 +448,7 @@ module.exports = function() {
                                                     if (profile) {
                                                         myData.physicalStates.food = profile;
                                                     }
+                                                    else myData.physicalStates.food = "Missing information";
                                                 }).limit(parseInt(l));
                                             })
                                     })
@@ -461,6 +470,7 @@ module.exports = function() {
                                                     if (profile) {
                                                         myData.physicalStates.body = profile;
                                                     }
+                                                    else myData.physicalStates.body = "Missing information";
                                                 }).limit(parseInt(l));
                                             })
                                     })
@@ -484,6 +494,7 @@ module.exports = function() {
                                             if (profile) {
                                                 myData.socialRelations = profile;
                                             }
+                                            else myData.socialRelations = "Missing information";
                                         }).limit(parseInt(l));
                                     })
                                     .finally(function () {
